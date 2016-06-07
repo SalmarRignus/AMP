@@ -6,7 +6,7 @@
 //	this->pred = NULL;
 //}
 
-FineGrainedList::Window::Window(Node *curr, Node *pred)
+FineGrainedList::Window::Window(Node *pred, Node *curr)
 {
 	this->curr = curr;
 	this->pred = pred;

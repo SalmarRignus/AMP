@@ -1,5 +1,6 @@
 #include "fineList.h"
 #include <limits>
+#include <iostream>
 
 
 /**
@@ -7,8 +8,8 @@
  */
 FineGrainedList::FineGrainedList(void)
 {
-	head = new Node(std::numeric_limits<int>::min(), tail);
 	tail = new Node(std::numeric_limits<int>::max(), NULL);
+	head = new Node(std::numeric_limits<int>::min(), tail);
 }
 
 /**
@@ -31,6 +32,9 @@ FineGrainedList::~FineGrainedList()
 
 /**
  * @brief Searches for an item in the list
+ * @detail If the place, where the element should be was found, it returns a
+		   "window element" containing a predecessor and current node
+		   inbetween which the said element should be
  * @param item Key value to look for in the list
  */
 FineGrainedList::Window FineGrainedList::find(int item)
@@ -41,6 +45,7 @@ FineGrainedList::Window FineGrainedList::find(int item)
 
 	Node *curr = pred->getNext();
 	curr->mut.lock();
+
 	while(curr->getItem() < item)
 	{
 		pred->mut.unlock();
@@ -51,6 +56,11 @@ FineGrainedList::Window FineGrainedList::find(int item)
 	return Window(pred, curr);
 }
 
+/**
+ * @brief Returns true if the item is in the list and false otherwise
+ * @param item Element to look for in the list
+ * @return True if the item is in the list and false otherwise
+ */
 bool FineGrainedList::contains(int item)
 {
 	Window w = find(item);
@@ -71,7 +81,6 @@ bool FineGrainedList::contains(int item)
 bool FineGrainedList::add(int item)
 {
 	Window w = find(item);
-
 	if(w.curr->getItem() == item)
 	{
 		w.unlock();
@@ -104,4 +113,17 @@ bool FineGrainedList::remove(int item)
 	}
 	else
 		return false;
+}
+
+bool FineGrainedList::isEmpty(void)
+{
+	bool isEmpty = false;
+
+	head->mut.lock();
+	if(head->getNext() == tail)
+		isEmpty = true;
+
+	head->mut.unlock();
+
+	return isEmpty;
 }

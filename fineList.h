@@ -25,7 +25,7 @@ public:
 	{
 	public:
 		Node *curr, *pred;
-		Window(Node *curr, Node *pred);
+		Window(Node *pred, Node *curr);
 		//Window(void);
 		void unlock(void);
 	};
@@ -36,6 +36,7 @@ public:
 	bool contains(int item);
 	bool add(int item);
 	bool remove(int item);
+	bool isEmpty(void);
 
 private:
 	Node *head, *tail;
