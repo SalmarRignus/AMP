@@ -1,14 +1,15 @@
-#include "fineList.h"
+#include "coarseList.h"
 #include <limits>
+#include <iostream>
 
 
 /**
- * @brief Constructs a list with fine grained locks
+ * @brief Constructs a list with coarse grained locks
  */
 CoarseGrainedList::CoarseGrainedList(void)
 {
-	head = new Node(std::numeric_limits<int>::min(), tail);
 	tail = new Node(std::numeric_limits<int>::max(), NULL);
+	head = new Node(std::numeric_limits<int>::min(), tail);
 }
 
 /**
@@ -31,33 +32,38 @@ CoarseGrainedList::~CoarseGrainedList()
 
 /**
  * @brief Searches for an item in the list
+ * @detail If the place, where the element should be was found, it returns a
+		   "window element" containing a predecessor and current node
+		   inbetween which the said element should be
  * @param item Key value to look for in the list
  */
-Window CoarseGrainedList::find(int item)
+CoarseGrainedList::Window CoarseGrainedList::find(int item)
 {
+	mut.lock();
 	//Look for item or successor
 	Node *pred = head;
-	pred->mut.lock();
-
 	Node *curr = pred->getNext();
-	curr->mut.lock();
+
 	while(curr->getItem() < item)
 	{
-		pred->mut.unlock();
 		pred = curr;
 		curr = curr->getNext();
-		curr->mut.lock();
 	}
 	return Window(pred, curr);
 }
 
+/**
+ * @brief Returns true if the item is in the list and false otherwise
+ * @param item Element to look for in the list
+ * @return True if the item is in the list and false otherwise
+ */
 bool CoarseGrainedList::contains(int item)
 {
 	Window w = find(item);
 	bool found;
 
 	found = (item == w.curr->getItem());
-	w.unlock();
+	mut.unlock();
 
 	return found;
 }
@@ -71,17 +77,16 @@ bool CoarseGrainedList::contains(int item)
 bool CoarseGrainedList::add(int item)
 {
 	Window w = find(item);
-
 	if(w.curr->getItem() == item)
 	{
-		w.unlock();
+		mut.unlock();
 		return false;
 	}
 	else
 	{
 		Node *node = new Node(item, w.curr);
 		w.pred->setNext(node);
-		w.unlock();
+		mut.unlock();
 		return true;
 	}
 }
@@ -98,10 +103,26 @@ bool CoarseGrainedList::remove(int item)
 	if(w.curr->getItem() == item)
 	{
 		w.pred->setNext(w.curr->getNext());
-		w.unlock();
+		mut.unlock();
 		delete(w.curr);
 		return true;
 	}
 	else
+	{
+		mut.unlock();
 		return false;
+	}
+}
+
+bool CoarseGrainedList::isEmpty(void)
+{
+	bool isEmpty = false;
+
+	mut.lock();
+	if(head->getNext() == tail)
+		isEmpty = true;
+
+	mut.unlock();
+
+	return isEmpty;
 }

@@ -26,7 +26,6 @@ public:
 		Node *curr, *pred;
 		Window(Node *curr, Node *pred);
 		//Window(void);
-		void unlock(void);
 	};
 
 	CoarseGrainedList(void);
@@ -35,7 +34,9 @@ public:
 	bool contains(int item);
 	bool add(int item);
 	bool remove(int item);
+	bool isEmpty(void);
 
 private:
 	std::mutex mut;
+	Node *head, *tail;
 };

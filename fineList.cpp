@@ -112,7 +112,10 @@ bool FineGrainedList::remove(int item)
 		return true;
 	}
 	else
+	{
+		w.unlock();
 		return false;
+	}
 }
 
 bool FineGrainedList::isEmpty(void)

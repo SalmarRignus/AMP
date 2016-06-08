@@ -7,25 +7,27 @@
 #include <iostream>
 #include <thread>
 #include <unistd.h>
+#include <string>
+#include <sstream>
 
 int SeqTestList(List *list);
-void SeqTestCoarseGrainedList(void);
-void SeqTestFineGrainedList(void);
-void SeqTestOptimisticSyncList(void);
-void SeqTestLazyList(void);
-void SeqTestLockFreeList(void);
+void TestCoarseGrainedList(void);
+void TestFineGrainedList(void);
+void TestOptimisticSyncList(void);
+void TestLazyList(void);
+void TestLockFreeList(void);
 int ParTestListIndividual(List *list);
 
 #define TEST_LIST_LENGTH	5000
-#define NUMBER_OF_THREADS	2
+#define NUMBER_OF_THREADS	100
 
 int main(int argc, char *argv[])
 {
-	SeqTestCoarseGrainedList();
-	SeqTestFineGrainedList();
-	SeqTestOptimisticSyncList();
-	SeqTestLazyList();
-	SeqTestLockFreeList();
+	TestCoarseGrainedList();
+	TestFineGrainedList();
+	TestOptimisticSyncList();
+	TestLazyList();
+	TestLockFreeList();
 
 	return EXIT_SUCCESS;
 }
@@ -76,7 +78,7 @@ int ParTestList(List *list)
 		threads[z] = new std::thread(ParTestListIndividual, list);
 	}
 	
-	sleep(10);
+	sleep(0);
 	//wait for all the threads until they have finished
 	for(int z = 0; z < NUMBER_OF_THREADS; z++)
 	{
@@ -91,7 +93,6 @@ int ParTestList(List *list)
 		std::cout << "Error, the list should be empty" << std::endl;
 		return EXIT_FAILURE;
 	}
-
 }
 
 int ParTestListIndividual(List *list)
@@ -103,28 +104,40 @@ int ParTestListIndividual(List *list)
 	//fill the list with values
 	for(int z = 0; z < TEST_LIST_LENGTH; z++)
 	{
-		std::cout << "Thread #" << std::this_thread::get_id() << " adds " << z << std::endl;
 		list->add(z);
 	}
 
 	//empty the list
 	for(int z = 0; z < TEST_LIST_LENGTH; z++)
 	{
-		std::cout << "Thread #" << std::this_thread::get_id() << " removes " << z << std::endl;
 		list->remove(z);
 	}
-	
-	std::cout << "Thread #" << std::this_thread::get_id() << " finishes" << std::endl;
+	//writing to cout with one string prohibites scrambling of messages
+	std::string message;
+	std::stringstream ss;
+	ss << std::this_thread::get_id();
+	message.append("Thread #");
+	message.append(ss.str());
+	message.append(" finishes\n");
+	std::cout << message;
 }
 
-void SeqTestCoarseGrainedList()
+void TestCoarseGrainedList()
 {
-	std::cout << "Start Test of list with coarse-grained locks" << std::endl;
-	//TODO
-	std::cout << "End Test of list with coarse-grained locks" << std::endl;
+	std::cout << "Start Sequential Test of list with coarse-grained locks" << std::endl;
+	CoarseGrainedList *cList = new CoarseGrainedList();
+	SeqTestList(cList);
+	std::cout << "End Sequential Test of list with coarse-grained locks" << std::endl;
+
+	std::cout << "Start Parallel Test of list with coarse-grained locks" << std::endl;
+	ParTestList(cList);
+	std::cout << "End Parallel Test of list with coarse-grained locks" << std::endl;
+
+	delete cList;
+
 	return;
 }
-void SeqTestFineGrainedList()
+void TestFineGrainedList()
 {
 	std::cout << "Start Sequential Test of list with fine-grained locks" << std::endl;
 	FineGrainedList *fList = new FineGrainedList();
@@ -134,19 +147,22 @@ void SeqTestFineGrainedList()
 	std::cout << "Start Parallel Test of list with fine-grained locks" << std::endl;
 	ParTestList(fList);
 	std::cout << "End Parallel Test of list with fine-grained locks" << std::endl;
+
+	delete fList;
+
 	return;
 }
-void SeqTestOptimisticSyncList()
+void TestOptimisticSyncList()
 {
 	//TODO
 	return;
 }
-void SeqTestLazyList()
+void TestLazyList()
 {
 	//TODO
 	return;
 }
-void SeqTestLockFreeList()
+void TestLockFreeList()
 {
 	//TODO
 	return;
