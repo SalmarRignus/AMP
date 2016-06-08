@@ -73,3 +73,36 @@ void CoarseGrainedList::Node::setNext(CoarseGrainedList::Node *next)
 	this->next = next;
 }
 
+/**********List with optimistic locking**********/
+OptList::Node::Node(void)
+{
+	this->item = 0;
+	this->next = NULL;
+}
+OptList::Node::Node(int item)
+{
+	this->item = item;
+	this->next = NULL;
+}
+OptList::Node::Node(int item, OptList::Node *next)
+{
+	this->item = item;
+	this->next = next;
+}
+int OptList::Node::getItem(void)
+{
+	return this->item;
+}
+void OptList::Node::setItem(int item)
+{
+	this->item = item;
+}
+OptList::Node *OptList::Node::getNext(void)
+{
+	return this->next;
+}
+void OptList::Node::setNext(OptList::Node *next)
+{
+	this->next = next;
+}
+

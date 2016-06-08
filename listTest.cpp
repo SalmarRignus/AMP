@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <string>
 #include <sstream>
+#include <chrono>
 
 int SeqTestList(List *list);
 void TestCoarseGrainedList(void);
@@ -19,7 +20,7 @@ void TestLockFreeList(void);
 int ParTestListIndividual(List *list);
 
 #define TEST_LIST_LENGTH	5000
-#define NUMBER_OF_THREADS	100
+#define NUMBER_OF_THREADS	4
 
 int main(int argc, char *argv[])
 {
@@ -130,8 +131,11 @@ void TestCoarseGrainedList()
 	std::cout << "End Sequential Test of list with coarse-grained locks" << std::endl;
 
 	std::cout << "Start Parallel Test of list with coarse-grained locks" << std::endl;
+	auto start = std::chrono::high_resolution_clock::now();
 	ParTestList(cList);
+	auto end = std::chrono::high_resolution_clock::now();
 	std::cout << "End Parallel Test of list with coarse-grained locks" << std::endl;
+	std::cout << "Required time: " << std::chrono::duration<double, std::milli>(end-start).count() << "ms" << std::endl << std::endl;
 
 	delete cList;
 
@@ -145,8 +149,11 @@ void TestFineGrainedList()
 	std::cout << "End Sequential Test of list with fine-grained locks" << std::endl;
 
 	std::cout << "Start Parallel Test of list with fine-grained locks" << std::endl;
+	auto start = std::chrono::high_resolution_clock::now();
 	ParTestList(fList);
+	auto end = std::chrono::high_resolution_clock::now();
 	std::cout << "End Parallel Test of list with fine-grained locks" << std::endl;
+	std::cout << "Required time: " << std::chrono::duration<double, std::milli>(end-start).count() << "ms" << std::endl << std::endl;
 
 	delete fList;
 
@@ -154,7 +161,20 @@ void TestFineGrainedList()
 }
 void TestOptimisticSyncList()
 {
-	//TODO
+	std::cout << "Start Sequential Test of list with optimistic synchronization" << std::endl;
+	OptList *oList = new OptList();
+	SeqTestList(oList);
+	std::cout << "End Sequential Test of list with optimistic synchronization" << std::endl;
+
+	std::cout << "Start Parallel Test of list with optimistic synchronization" << std::endl;
+	auto start = std::chrono::high_resolution_clock::now();
+	ParTestList(oList);
+	auto end = std::chrono::high_resolution_clock::now();
+	std::cout << "End Parallel Test of list with optimistic synchronization" << std::endl;
+	std::cout << "Required time: " << std::chrono::duration<double, std::milli>(end-start).count() << "ms" << std::endl << std::endl;
+
+	delete oList;
+
 	return;
 }
 void TestLazyList()
