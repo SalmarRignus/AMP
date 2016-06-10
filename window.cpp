@@ -50,3 +50,21 @@ void OptList::Window::unlock(void)
 	this->pred->mut.unlock();
 }
 
+/**********Lazy List**********/
+LazyList::Window::Window(Node *pred, Node *curr)
+{
+	this->curr = curr;
+	this->pred = pred;
+}
+
+void LazyList::Window::lock(void)
+{
+	this->curr->mut.lock();
+	this->pred->mut.lock();
+}
+
+void LazyList::Window::unlock(void)
+{
+	this->curr->mut.unlock();
+	this->pred->mut.unlock();
+}

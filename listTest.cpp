@@ -179,7 +179,20 @@ void TestOptimisticSyncList()
 }
 void TestLazyList()
 {
-	//TODO
+	std::cout << "Start Sequential Test of lazy list" << std::endl;
+	LazyList *lList = new LazyList();
+	SeqTestList(lList);
+	std::cout << "End Sequential Test of lazy list" << std::endl;
+
+	std::cout << "Start Parallel Test of lazy list" << std::endl;
+	auto start = std::chrono::high_resolution_clock::now();
+	ParTestList(lList);
+	auto end = std::chrono::high_resolution_clock::now();
+	std::cout << "End Parallel Test of lazy list" << std::endl;
+	std::cout << "Required time: " << std::chrono::duration<double, std::milli>(end-start).count() << "ms" << std::endl << std::endl;
+
+	delete lList;
+
 	return;
 }
 void TestLockFreeList()

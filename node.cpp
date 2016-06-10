@@ -106,3 +106,46 @@ void OptList::Node::setNext(OptList::Node *next)
 	this->next = next;
 }
 
+/**********Lazy List Implementation**********/
+LazyList::Node::Node(void)
+{
+	this->item = 0;
+	this->next = NULL;
+	this->erased = false;
+}
+LazyList::Node::Node(int item)
+{
+	this->item = item;
+	this->next = NULL;
+	this->erased = false;
+}
+LazyList::Node::Node(int item, LazyList::Node *next)
+{
+	this->item = item;
+	this->next = next;
+	this->erased = false;
+}
+int LazyList::Node::getItem(void)
+{
+	return this->item;
+}
+void LazyList::Node::setItem(int item)
+{
+	this->item = item;
+}
+LazyList::Node *LazyList::Node::getNext(void)
+{
+	return this->next;
+}
+void LazyList::Node::setNext(LazyList::Node *next)
+{
+	this->next = next;
+}
+bool LazyList::Node::isErased(void)
+{
+	return erased;
+}
+void LazyList::Node::markAsErased(void)
+{
+	erased = true;
+}
