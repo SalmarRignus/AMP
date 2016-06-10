@@ -108,6 +108,7 @@ bool LazyList::remove(int item)
 	Window w = find(item);
 	if(w.curr->getItem() == item)
 	{
+		w.curr->markAsErased();
 		w.pred->setNext(w.curr->getNext());
 		w.unlock();
 		//we must not physically delete a node, as it is unsafe
