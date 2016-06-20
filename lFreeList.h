@@ -1,6 +1,8 @@
 #include "list.h"
 #include <atomic>
 
+//#define COMPARE_EXCHANGE_WEAK
+
 class LockFreeList : public List
 {
 public:

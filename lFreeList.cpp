@@ -114,8 +114,13 @@ bool LockFreeList::add(int item)
 
 			//if the next pointer of pred still points to curr and it is not marked as erased,
 			//then atomically insert the new node
+#ifndef COMPARE_EXCHANGE_WEAK
 			if(w.pred->getAtomics()->compare_exchange_strong(AEPred, AENode))
 				return true;
+			if(w.pred->getAtomics()->compare_exchange_weak(AEPred, AENode))
+				return true;
+#else
+#endif
 		}
 	}
 }
@@ -139,12 +144,21 @@ bool LockFreeList::remove(int item)
 
 			//if curr still points to its "former" next element and this next element is not deleted
 			//then mark curr as deleted otherwise start over
+#ifndef COMPARE_EXCHANGE_WEAK
 			if(!w.curr->getAtomics()->compare_exchange_strong(AECurr, AEErasedCurr))
 				continue;
+#else
+			if(!w.curr->getAtomics()->compare_exchange_weak(AECurr, AEErasedCurr))
+				continue;
+#endif
 
 			AtomicElements AEPred(w.curr, true);
 			//try to unlink curr from the list if it still exists
+#ifndef COMPARE_EXCHANGE_WEAK
 			w.pred->getAtomics()->compare_exchange_strong(AEPred, AECurr);
+#else
+			w.pred->getAtomics()->compare_exchange_weak(AEPred, AECurr);
+#endif
 
 			return true;
 		}
