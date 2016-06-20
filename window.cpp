@@ -68,3 +68,10 @@ void LazyList::Window::unlock(void)
 	this->curr->mut.unlock();
 	this->pred->mut.unlock();
 }
+
+/**********Lock Free List**********/
+LockFreeList::Window::Window(Node *pred, Node *curr)
+{
+	this->curr = curr;
+	this->pred = pred;
+}

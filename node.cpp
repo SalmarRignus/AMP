@@ -149,3 +149,49 @@ void LazyList::Node::markAsErased(void)
 {
 	erased = true;
 }
+
+/**********Lock free List Implementation**********/
+//LockFreeList::Node::Node(void)
+//{
+//	this->item = 0;
+//}
+//LockFreeList::Node::Node(int item)
+//{
+//	this->item = item;
+//}
+//LockFreeList::Node::Node(int item, LockFreeList::Node *next)
+//{
+//	this->item = item;
+//}
+int LockFreeList::Node::getItem(void)
+{
+	return this->item;
+}
+void LockFreeList::Node::setItem(int item)
+{
+	this->item = item;
+}
+LockFreeList::Node *LockFreeList::Node::getNext(void)
+{
+	return this->atomicElements.load().next;
+}
+void LockFreeList::Node::setNext(LockFreeList::Node *next)
+{
+	AtomicElements AE = this->atomicElements.load();
+	AE.next = next;
+	this->atomicElements.store(AE);
+}
+bool LockFreeList::Node::isErased(void)
+{
+	return this->atomicElements.load().erased;
+}
+void LockFreeList::Node::markAsErased(void)
+{
+	AtomicElements AE = this->atomicElements.load();
+	AE.erased = true;
+	this->atomicElements.store(AE);
+}
+std::atomic<LockFreeList::AtomicElements> *LockFreeList::Node::getAtomics(void)
+{
+	return &(this->atomicElements);
+}
