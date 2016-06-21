@@ -171,12 +171,18 @@ bool LockFreeList::remove(int item)
 
 bool LockFreeList::isEmpty(void)
 {
-	bool isEmpty = false;
-
 	if(head->getNext() == tail)
-		isEmpty = true;
-
-	return isEmpty;
+		return true;
+	//traverse the list and check whether all elements are marked as "erased"
+	else
+	{
+		for(Node *node = head->getNext(); node != tail; node = node->getNext())
+		{
+			if(!node->isErased())
+				return false;
+		}
+		return true;
+	}
 }
 
 LockFreeList::AtomicElements::AtomicElements(void)
