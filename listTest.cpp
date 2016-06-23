@@ -181,7 +181,7 @@ void TestList(List *list)
 	std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
 
 	//set the messages according to the list type
-	if(strcmp(typeid(list).name(), "CoarseGrainedList") == 0)
+	if(typeid(*list) == typeid(CoarseGrainedList))
 	{
 		startMessageSeqCorr = "Start Sequential Correctness Test of list with coarse-grained locks\n";
 		endMessageSeqCorr = "End Sequential Correctness Test of list with coarse-grained locks\n";
@@ -190,7 +190,7 @@ void TestList(List *list)
 		startMessageParPerf = "Start Parallel Performance Test of list with coarse-grained locks\n";
 		endMessageParPerf = "End Parallel Performance Test of list with coarse-grained locks\n";
 	}
-	if(strcmp(typeid(list).name(), "FineGrainedList") == 0)
+	if(typeid(*list) == typeid(FineGrainedList))
 	{
 		startMessageSeqCorr = "Start Sequential Correctness Test of list with fine-grained locks\n";
 		endMessageSeqCorr = "End Sequential Correctness Test of list with fine-grained locks\n";
@@ -199,7 +199,7 @@ void TestList(List *list)
 		startMessageParPerf = "Start Parallel Performance Test of list with fine-grained locks\n";
 		endMessageParPerf = "End Parallel Performance Test of list with fine-grained locks\n";
 	}
-	if(strcmp(typeid(list).name(), "OptList") == 0)
+	if(typeid(*list) == typeid(OptList))
 	{
 		startMessageSeqCorr = "Start Sequential Correctness Test of list with optimistic locking\n";
 		endMessageSeqCorr = "End Sequential Correctness Test of list with optimistic locking\n";
@@ -208,7 +208,7 @@ void TestList(List *list)
 		startMessageParPerf = "Start Parallel Performance Test of list with optimistic locking\n";
 		endMessageParPerf = "End Parallel Performance Test of list with optimistic locking\n";
 	}
-	if(strcmp(typeid(list).name(), "LazyList") == 0)
+	if(typeid(*list) == typeid(LazyList))
 	{
 		startMessageSeqCorr = "Start Sequential Correctness Test of lazy list\n";
 		endMessageSeqCorr = "End Sequential Correctness Test of lazy list\n";
@@ -217,7 +217,7 @@ void TestList(List *list)
 		startMessageParPerf = "Start Parallel Performance Test of lazy list\n";
 		endMessageParPerf = "End Parallel Performance Test of lazy list\n";
 	}
-	if(strcmp(typeid(list).name(), "LockFreeList") == 0)
+	if(typeid(*list) == typeid(LockFreeList))
 	{
 		startMessageSeqCorr = "Start Sequential Correctness Test of lock-free list\n";
 		endMessageSeqCorr = "End Sequential Correctness Test of lock-free list\n";
@@ -235,6 +235,7 @@ void TestList(List *list)
 		SeqTestList(list);
 		end = std::chrono::high_resolution_clock::now();
 		std::cout << endMessageSeqCorr;
+		std::cout << "File used: " << inputFileName << std::endl;
 		std::cout << "Required time: " << std::chrono::duration<double, std::milli>(end-start).count() << "ms" << std::endl << std::endl;
 
 		//parallel correctness test
@@ -243,6 +244,7 @@ void TestList(List *list)
 		ParTestList(list);
 		end = std::chrono::high_resolution_clock::now();
 		std::cout << endMessageParCorr;
+		std::cout << "File used: " << inputFileName << std::endl;
 		std::cout << "Required time: " << std::chrono::duration<double, std::milli>(end-start).count() << "ms" << std::endl << std::endl;
 	}
 
