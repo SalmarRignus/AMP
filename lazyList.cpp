@@ -122,6 +122,16 @@ bool LazyList::remove(int item)
 	}
 }
 
+bool LazyList::validate(Window w)
+{
+	return	!w.pred->isErased() &&
+			!w.curr->isErased() &&
+			w.pred->getNext() == w.curr;
+}
+
+/**
+ * @details Check whether the list is empty
+ */
 bool LazyList::isEmpty(void)
 {
 	bool isEmpty = false;
@@ -133,11 +143,4 @@ bool LazyList::isEmpty(void)
 	head->mut.unlock();
 
 	return isEmpty;
-}
-
-bool LazyList::validate(Window w)
-{
-	return	!w.pred->isErased() &&
-			!w.curr->isErased() &&
-			w.pred->getNext() == w.curr;
 }

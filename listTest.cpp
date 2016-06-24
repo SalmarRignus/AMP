@@ -3,6 +3,7 @@
 #include "lazyList.h"
 #include "lFreeList.h"
 #include "coarseList.h"
+#include "listOperation.h"
 
 #include <iostream>
 #include <fstream>
@@ -12,7 +13,6 @@
 #include <cstring>
 #include <sstream>
 #include <chrono>
-
 #include <list>
 
 
