@@ -13,7 +13,12 @@
 
 const char *SEQ_ORDERED_DATA_FILENAME = "ListContentCorrSort.txt";
 const char *SEQ_BACKWARDS_ORDERED_FILENAME = "ListContentBackSort.txt";
-const char *RANDOM_DATA_FILENAME = "ListContentRandom.txt";
+const char *CORRECTNESS_FILENAME = "ListContentCorrectness.txt";
+const char *RANDOM_DATA_FILENAME_80_10_10 = "ListContentRandom_80_10_10.txt";
+const char *RANDOM_DATA_FILENAME_70_20_10 = "ListContentRandom_70_20_10.txt";
+const char *RANDOM_DATA_FILENAME_60_20_20 = "ListContentRandom_60_20_20.txt";
+const char *RANDOM_DATA_FILENAME_50_35_15 = "ListContentRandom_50_35_15.txt";
+const char *RANDOM_DATA_FILENAME_40_30_30 = "ListContentRandom_40_30_30.txt";
 const char *FRONT_HEAVY_DATA_FILENAME = "ListContentFront.txt";
 const char *BACK_HEAVY_DATA_FILENAME = "ListContentBackHeavy.txt";
 
@@ -37,15 +42,33 @@ int main(int argc, char *argv[])
 	char buffer[BUFFER_SIZE];
 	std::ofstream sequOrderedDataFile;
 	std::ofstream sequBackwardsOrderedDataFile;
-	std::ofstream randomDataFile;
+	std::ofstream correctnessDataFile;
+	std::ofstream randomDataFile_80_10_10;
+	std::ofstream randomDataFile_70_20_10;
+	std::ofstream randomDataFile_60_20_20;
+	std::ofstream randomDataFile_50_35_15;
+	std::ofstream randomDataFile_40_30_30;
 	std::ofstream frontHeavyDataFile;
 	std::ofstream backHeavyDataFile;
+
+	int containsOpCount;
+	int addOpCount;
+	int removeOpCount;
+	struct ListOperation listOperation;
+
+
+	srand(time(NULL));
 
 	try
 	{
 		sequOrderedDataFile.open(SEQ_ORDERED_DATA_FILENAME, std::fstream::out);
 		sequBackwardsOrderedDataFile.open(SEQ_BACKWARDS_ORDERED_FILENAME, std::fstream::out);
-		randomDataFile.open(RANDOM_DATA_FILENAME, std::fstream::out);
+		correctnessDataFile.open(CORRECTNESS_FILENAME, std::fstream::out);
+		randomDataFile_80_10_10.open(RANDOM_DATA_FILENAME_80_10_10, std::fstream::out);
+		randomDataFile_70_20_10.open(RANDOM_DATA_FILENAME_70_20_10, std::fstream::out);
+		randomDataFile_60_20_20.open(RANDOM_DATA_FILENAME_60_20_20, std::fstream::out);
+		randomDataFile_50_35_15.open(RANDOM_DATA_FILENAME_50_35_15, std::fstream::out);
+		randomDataFile_40_30_30.open(RANDOM_DATA_FILENAME_40_30_30, std::fstream::out);
 		frontHeavyDataFile.open(FRONT_HEAVY_DATA_FILENAME, std::fstream::out);
 		backHeavyDataFile.open(BACK_HEAVY_DATA_FILENAME, std::fstream::out);
 	}
@@ -63,9 +86,34 @@ int main(int argc, char *argv[])
 		std::cout << "Error when opening file: " << SEQ_BACKWARDS_ORDERED_FILENAME << std::endl;
 		exit(EXIT_FAILURE);
 	}
-	if((randomDataFile.rdstate() & std::fstream::failbit) != 0)
+	if((correctnessDataFile.rdstate() & std::fstream::failbit) != 0)
 	{
-		std::cout << "Error when opening file: " << RANDOM_DATA_FILENAME << std::endl;
+		std::cout << "Error when opening file: " << CORRECTNESS_FILENAME << std::endl;
+		exit(EXIT_FAILURE);
+	}
+	if((randomDataFile_80_10_10.rdstate() & std::fstream::failbit) != 0)
+	{
+		std::cout << "Error when opening file: " << RANDOM_DATA_FILENAME_80_10_10 << std::endl;
+		exit(EXIT_FAILURE);
+	}
+	if((randomDataFile_70_20_10.rdstate() & std::fstream::failbit) != 0)
+	{
+		std::cout << "Error when opening file: " << RANDOM_DATA_FILENAME_70_20_10 << std::endl;
+		exit(EXIT_FAILURE);
+	}
+	if((randomDataFile_60_20_20.rdstate() & std::fstream::failbit) != 0)
+	{
+		std::cout << "Error when opening file: " << RANDOM_DATA_FILENAME_60_20_20 << std::endl;
+		exit(EXIT_FAILURE);
+	}
+	if((randomDataFile_50_35_15.rdstate() & std::fstream::failbit) != 0)
+	{
+		std::cout << "Error when opening file: " << RANDOM_DATA_FILENAME_50_35_15 << std::endl;
+		exit(EXIT_FAILURE);
+	}
+	if((randomDataFile_40_30_30.rdstate() & std::fstream::failbit) != 0)
+	{
+		std::cout << "Error when opening file: " << RANDOM_DATA_FILENAME_40_30_30 << std::endl;
 		exit(EXIT_FAILURE);
 	}
 	if((frontHeavyDataFile.rdstate() & std::fstream::failbit) != 0)
@@ -82,41 +130,116 @@ int main(int argc, char *argv[])
 	//generate the ascending sorted list data with ADD operations only
 	for(int z = 0; z < NUMBER_OF_ELEMENTS; z++)
 	{
-		sequOrderedDataFile.write("ADD ", strlen("ADD "));
-		strcpy(buffer, std::to_string(z).c_str());
-		sequOrderedDataFile.write(buffer, strlen(buffer));
-		sequOrderedDataFile.put('\n');
+		listOperation.operation = ADD; listOperation.data = z;
+		WriteOp(sequOrderedDataFile, listOperation);
 	}
 	sequOrderedDataFile.close();
 
 	//generate the descending sorted list data with ADD operations only
 	for(int z = NUMBER_OF_ELEMENTS-1; z >= 0; z--)
 	{
-		sequBackwardsOrderedDataFile.write("ADD ", strlen("ADD "));
-		strcpy(buffer, std::to_string(z).c_str());
-		sequBackwardsOrderedDataFile.write(buffer, strlen(buffer));
-		sequBackwardsOrderedDataFile.put('\n');
+		listOperation.operation = ADD; listOperation.data = z;
+		WriteOp(sequBackwardsOrderedDataFile, listOperation);
 	}
 	sequBackwardsOrderedDataFile.close();
 
+	//generate the list operations for the parallel correctness test
+	for(int z = 0; z < NUMBER_OF_ELEMENTS; z++)
+	{
+		listOperation.operation = ADD; listOperation.data = z;
+		WriteOp(correctnessDataFile, listOperation);
+	}
+	for(int z = 0; z < NUMBER_OF_ELEMENTS; z++)
+	{
+		listOperation.operation = REMOVE; listOperation.data = z;
+		WriteOp(correctnessDataFile, listOperation);
+	}
+	correctnessDataFile.close();
+
 	//generate a pseudo random list of data with a random order of operations,
 	//consisting of 80% CONTAINS, 10% ADD and 10% REMOVE operations
-	int containsOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.8);
-	int addOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.1);
-	int removeOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.1);
-	struct ListOperation listOperation;
-	srand(time(NULL));
+	containsOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.8);
+	addOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.1);
+	removeOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.1);
 	for(int z = 0; z < NUMBER_OF_ELEMENTS; z++)
 	{
 		listOperation.operation = SelectOp(containsOpCount, addOpCount, removeOpCount);
 		listOperation.data = rand() % NUMBER_OF_ELEMENTS;
-		if(WriteOp(randomDataFile, listOperation) == EXIT_FAILURE)
+		if(WriteOp(randomDataFile_80_10_10, listOperation) == EXIT_FAILURE)
 		{
 			std::cout << "Error in WriteOp() (most likely listOperation.operation == FAIL)" << std::endl;
 			exit(EXIT_FAILURE);
 		}
 	}
-	randomDataFile.close();
+	randomDataFile_80_10_10.close();
+
+	//generate a pseudo random list of data with a random order of operations,
+	//consisting of 70% CONTAINS, 20% ADD and 10% REMOVE operations
+	containsOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.7);
+	addOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.2);
+	removeOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.1);
+	for(int z = 0; z < NUMBER_OF_ELEMENTS; z++)
+	{
+		listOperation.operation = SelectOp(containsOpCount, addOpCount, removeOpCount);
+		listOperation.data = rand() % NUMBER_OF_ELEMENTS;
+		if(WriteOp(randomDataFile_70_20_10, listOperation) == EXIT_FAILURE)
+		{
+			std::cout << "Error in WriteOp() (most likely listOperation.operation == FAIL)" << std::endl;
+			exit(EXIT_FAILURE);
+		}
+	}
+	randomDataFile_70_20_10.close();
+
+	//generate a pseudo random list of data with a random order of operations,
+	//consisting of 60% CONTAINS, 20% ADD and 20% REMOVE operations
+	containsOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.6);
+	addOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.2);
+	removeOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.2);
+	for(int z = 0; z < NUMBER_OF_ELEMENTS; z++)
+	{
+		listOperation.operation = SelectOp(containsOpCount, addOpCount, removeOpCount);
+		listOperation.data = rand() % NUMBER_OF_ELEMENTS;
+		if(WriteOp(randomDataFile_60_20_20, listOperation) == EXIT_FAILURE)
+		{
+			std::cout << "Error in WriteOp() (most likely listOperation.operation == FAIL)" << std::endl;
+			exit(EXIT_FAILURE);
+		}
+	}
+	randomDataFile_60_20_20.close();
+
+	//generate a pseudo random list of data with a random order of operations,
+	//consisting of 50% CONTAINS, 35% ADD and 15% REMOVE operations
+	containsOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.5);
+	addOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.35);
+	removeOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.15);
+	for(int z = 0; z < NUMBER_OF_ELEMENTS; z++)
+	{
+		listOperation.operation = SelectOp(containsOpCount, addOpCount, removeOpCount);
+		listOperation.data = rand() % NUMBER_OF_ELEMENTS;
+		if(WriteOp(randomDataFile_50_35_15, listOperation) == EXIT_FAILURE)
+		{
+			std::cout << "Error in WriteOp() (most likely listOperation.operation == FAIL)" << std::endl;
+			exit(EXIT_FAILURE);
+		}
+	}
+	randomDataFile_50_35_15.close();
+
+	//generate a pseudo random list of data with a random order of operations,
+	//consisting of 40% CONTAINS, 30% ADD and 30% REMOVE operations
+	containsOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.4);
+	addOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.3);
+	removeOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.3);
+	for(int z = 0; z < NUMBER_OF_ELEMENTS; z++)
+	{
+		listOperation.operation = SelectOp(containsOpCount, addOpCount, removeOpCount);
+		listOperation.data = rand() % NUMBER_OF_ELEMENTS;
+		if(WriteOp(randomDataFile_40_30_30, listOperation) == EXIT_FAILURE)
+		{
+			std::cout << "Error in WriteOp() (most likely listOperation.operation == FAIL)" << std::endl;
+			exit(EXIT_FAILURE);
+		}
+	}
+	randomDataFile_40_30_30.close();
 
 	/*XXX not sure how to fill the following two files or how to actually use them ... */
 	//generate the "front heavy" list data
@@ -144,6 +267,8 @@ int main(int argc, char *argv[])
  * @brief Randomly selects an operation (add, remove or contains) and decreases the  appropriate count variable
  * @details Once a parameter with a value less or equal then 0 is entered this operation cannot be selected;
  *			if all three parameters are less or equal 0, then as a result the returned value is FAIL
+ *			The probability of choosing an operation "xxx" is: xxxOpCount/<sum of all op counts>
+ *			(number of favourable outcomes divided by possible outcomes)
  * @return A random operation or FAIL if all parameters are <= 0
  * @param containsOpCount Reference to the (backwards) counter for the contains operations;
  *		  if its value is greater than 0 and a contains operations is selected, then its value is decremented
@@ -154,102 +279,30 @@ int main(int argc, char *argv[])
  */
 enum Operation SelectOp(int& containsOpCount, int& addOpCount, int& removeOpCount)
 {
-	int randomNumber = rand();
+	int totalRemainingOpCount = containsOpCount + addOpCount + removeOpCount;
+	int randomNumber = rand() % totalRemainingOpCount;
 
-	//if all operations are available
-	if(containsOpCount > 0 && addOpCount > 0 && removeOpCount > 0)
-	{
-		//select contains
-		if((randomNumber % 3) == 0)
-		{
-			containsOpCount--;
-			return CONTAINS;
-		}
-		//select add
-		if((randomNumber % 3) == 1)
-		{
-			addOpCount--;
-			return ADD;
-		}
-		//select remove
-		if((randomNumber % 3) == 2)
-		{
-			removeOpCount--;
-			return REMOVE;
-		}
-	}
-	//if the contains operation is not available
-	else if(containsOpCount <= 0 && addOpCount > 0 && removeOpCount > 0)
-	{
-		//select add
-		if((randomNumber % 2) == 0)
-		{
-			addOpCount--;
-			return ADD;
-		}
-		//select remove
-		if((randomNumber % 2) == 1)
-		{
-			removeOpCount--;
-			return REMOVE;
-		}
-	}
-	//if the add operation is not available
-	else if(containsOpCount > 0 && addOpCount <= 0 && removeOpCount > 0)
-	{
-		//select contains
-		if((randomNumber % 2) == 0)
-		{
-			containsOpCount--;
-			return CONTAINS;
-		}
-		//select remove
-		if((randomNumber % 2) == 1)
-		{
-			removeOpCount--;
-			return REMOVE;
-		}
-	}
-	//if the remove operation is not available
-	else if(containsOpCount > 0 && addOpCount > 0 && removeOpCount <= 0)
-	{
-		//select contains
-		if((randomNumber % 2) == 0)
-		{
-			containsOpCount--;
-			return CONTAINS;
-		}
-		//select add
-		if((randomNumber % 2) == 1)
-		{
-			addOpCount--;
-			return ADD;
-		}
-	}
-	//if the contains and add operation are not available
-	else if(containsOpCount <= 0 && addOpCount <= 0 && removeOpCount > 0)
-	{
-		//select remove
-		removeOpCount--;
-		return REMOVE;
-	}
-	//if the contains and remove operation are not available
-	else if(containsOpCount <= 0 && addOpCount > 0 && removeOpCount <= 0)
-	{
-		//select add
-		addOpCount--;
-		return ADD;
-	}
-	//if the add and remove operation arare not available
-	else if(containsOpCount > 0 && addOpCount <= 0 && removeOpCount <= 0)
-	{
-		//select contains
-		containsOpCount--;
-		return CONTAINS;
-	}
-	//if no operation is available
-	else
+
+	if(containsOpCount <= 0 && addOpCount <= 0 &&removeOpCount <= 0)
 		return FAIL;
+	else
+	{
+		if(randomNumber < containsOpCount)
+		{
+			containsOpCount--;
+			return CONTAINS;
+		}
+		else if(randomNumber >= containsOpCount && randomNumber < containsOpCount + addOpCount)
+		{
+			addOpCount--;
+			return ADD;
+		}
+		else if(randomNumber >= containsOpCount + addOpCount && randomNumber < totalRemainingOpCount)
+		{
+			removeOpCount--;
+			return REMOVE;
+		}
+	}
 }
 
 /**

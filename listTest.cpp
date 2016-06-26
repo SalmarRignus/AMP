@@ -18,11 +18,11 @@
 
 /****************************************Prototypes****************************************/
 void PrintUsage(void);
-void TestLists(void);
-void TestList(List *list);
-int SeqTestList(List *list);
-int ParTestList(List *list);
-int ParTestListIndividual(List *list);
+void TestLists(std::list<ListOperation> inputList);
+void TestList(List *list, std::list<ListOperation> inputList);
+int SeqTestList(List *list); 		//predefined correctness test
+int ParTestList(List *list, std::list<ListOperation> inputList);
+int ParTestListIndividual(List *list, std::list<ListOperation> inputList);
 
 
 /****************************************Custom Types****************************************/
@@ -46,6 +46,8 @@ char inputFileName[BUFFER_SIZE];
 std::ifstream inputFile;
 unsigned int numberOfListElements;	//the number of elements from the input file 
 
+unsigned int numberOfListElementsSeq = 10000;	//for the predefined sequential correctness test, which does not depend on any input data
+
 /**
  * @brief	Performs a couple of tests considering the correctness and performance of different
  *			concurrent list implementations
@@ -60,7 +62,7 @@ unsigned int numberOfListElements;	//the number of elements from the input file
 int main(int argc, char *argv[])
 {
 	char buffer[BUFFER_SIZE];
-	std::list<unsigned int> inputList;
+	std::list<ListOperation> inputList;
 
 
 	//parse the command line
@@ -119,12 +121,30 @@ int main(int argc, char *argv[])
 	}
 
 	//write the file contents into a list
-	while(inputFile.eof())
+	enum Operation op;
+	while(!inputFile.eof())
 	{
-		inputFile.getline(buffer, BUFFER_SIZE-1, '\n');
+		//read the operation
+		inputFile.getline(buffer, BUFFER_SIZE-1, ' ');
+		if(strcmp(buffer, "CONTAINS") == 0)
+			op = CONTAINS;
+		else if(strcmp(buffer, "ADD") == 0)
+			op = ADD;
+		else if(strcmp(buffer, "REMOVE") == 0)
+			op = REMOVE;
+		else
+		{
+			//in case there is a trailing newline character at the end of the file
+			if(inputFile.eof())
+				break;
+			std::cout << "Error, when reading input file: " << inputFileName << std::endl << "invalid operation: " << buffer << std::endl;
+			exit(EXIT_FAILURE);
+		}
 		try
 		{
-			inputList.push_back(std::stoul(std::string(buffer), NULL, 10));
+			//read a possible value to perform the operation on
+			inputFile.getline(buffer, BUFFER_SIZE-1, '\n');
+			inputList.push_back(ListOperation(op, std::stoul(std::string(buffer), NULL, 10)));
 		}
 		catch(std::invalid_argument ex)
 		{
@@ -138,7 +158,10 @@ int main(int argc, char *argv[])
 
 	numberOfListElements = inputList.size();
 
-	TestLists();
+	//DEBUG
+	std::cout << std::endl << "DEBUG, numberOfListElements: " << numberOfListElements << std::endl;
+
+	TestLists(inputList);
 
 	return EXIT_SUCCESS;
 }
@@ -146,7 +169,7 @@ int main(int argc, char *argv[])
 /**
  * @brief Creates list objects of different implementations and calls the TestList method for every one of them
  */
-void TestLists(void)
+void TestLists(std::list<ListOperation> inputList)
 {
 	CoarseGrainedList	*cList =	new CoarseGrainedList();
 	FineGrainedList		*fList =	new FineGrainedList();
@@ -154,11 +177,11 @@ void TestLists(void)
 	LazyList			*lList =	new LazyList();
 	LockFreeList		*lfList =	new LockFreeList();
 
-	TestList(cList);
-	TestList(fList);
-	TestList(oList);
-	TestList(lList);
-	TestList(lfList);
+	TestList(cList, inputList);
+	TestList(fList, inputList);
+	TestList(oList, inputList);
+	TestList(lList, inputList);
+	TestList(lfList, inputList);
 
 	delete cList;
 	delete fList;
@@ -172,8 +195,10 @@ void TestLists(void)
 /**
  * @brief Calls the actual test procedures for the list
  * @param list Pointer to a list object that will be tested
+ * @param inputList A list (conventional C++ list) filled with the list operations to be used
+ *		  in the performance test
  */
-void TestList(List *list)
+void TestList(List *list, std::list<ListOperation> inputList)
 {
 	const char *startMessageSeqCorr = NULL, *endMessageSeqCorr = NULL;
 	const char *startMessageParCorr = NULL, *endMessageParCorr = NULL;
@@ -241,7 +266,7 @@ void TestList(List *list)
 		//parallel correctness test
 		std::cout << startMessageParCorr;
 		start = std::chrono::high_resolution_clock::now();
-		ParTestList(list);
+		ParTestList(list, inputList);
 		end = std::chrono::high_resolution_clock::now();
 		std::cout << endMessageParCorr;
 		std::cout << "File used: " << inputFileName << std::endl;
@@ -250,11 +275,13 @@ void TestList(List *list)
 
 	if(testMode == FULL || testMode == PERFORMANCE)
 	{
-		/************************************
 		std::cout << startMessageParPerf;
-		TODO add extensive performance tests
+		start = std::chrono::high_resolution_clock::now();
+		ParTestList(list, inputList);
+		end = std::chrono::high_resolution_clock::now();
 		std::cout << endMessageParPerf;
-		************************************/
+		std::cout << "File used: " << inputFileName << std::endl;
+		std::cout << "Required time: " << std::chrono::duration<double, std::milli>(end-start).count() << "ms" << std::endl << std::endl;
 	}
 }
 
@@ -264,12 +291,12 @@ void TestList(List *list)
 int SeqTestList(List *list)
 {
 	//fill the list from front to back
-	for(int z = numberOfListElements - 1; z >= 0; z--)
+	for(int z = numberOfListElementsSeq - 1; z >= 0; z--)
 	{
 		list->add(z);
 	}
 	//check whether it really contains all the added elements
-	for(int z = 0; z < numberOfListElements; z++)
+	for(int z = 0; z < numberOfListElementsSeq; z++)
 	{
 		if(!list->contains(z))
 		{
@@ -278,7 +305,7 @@ int SeqTestList(List *list)
 		}
 	}
 	//remove all the elements in the list
-	for(int z = 0; z < numberOfListElements; z++)
+	for(int z = 0; z < numberOfListElementsSeq; z++)
 	{
 		list->remove(z);
 	}
@@ -295,13 +322,13 @@ int SeqTestList(List *list)
 /**
  * @brief A parallel correctness test
  */
-int ParTestList(List *list)
+int ParTestList(List *list, std::list<ListOperation> inputList)
 {
 	std::thread *threads[numberOfThreads];
 
 	for(int z = 0; z < numberOfThreads; z++)
 	{
-		threads[z] = new std::thread(ParTestListIndividual, list);
+		threads[z] = new std::thread(ParTestListIndividual, list, std::list<ListOperation>(inputList));
 	}
 	
 	sleep(0);
@@ -311,41 +338,56 @@ int ParTestList(List *list)
 		threads[z]->join();
 	}
 
-	//check whether the list is empty
-	if(list->isEmpty())
-		return EXIT_SUCCESS;
-	else
-	{
-		std::cout << "Error, the list should be empty" << std::endl;
-		return EXIT_FAILURE;
-	}
+	////check whether the list is empty
+	//if(list->isEmpty())
+	//	return EXIT_SUCCESS;
+	//else
+	//{
+	//	std::cout << "Error, the list should be empty" << std::endl;
+	//	return EXIT_FAILURE;
+	//}
 }
 
-int ParTestListIndividual(List *list)
+int ParTestListIndividual(List *list, std::list<ListOperation> inputList)
 {
 	//should prevent this thread from finishing too fast, since we want as much contention as possible
 	sleep(0);
-	std::cout << std::dec;
 	
-	//fill the list with values
-	for(int z = 0; z < numberOfListElements; z++)
+	for(std::list<ListOperation>::iterator it = inputList.begin(); !inputList.empty() && it != inputList.end(); it++)
 	{
-		list->add(z);
+		switch(it->operation)
+		{
+		case CONTAINS:
+			list->contains(it->data);
+			break;
+		case ADD:
+			list->add(it->data);
+			break;
+		case REMOVE:
+			list->remove(it->data);
+			break;
+		case FAIL:
+			std::cout << "Error, invalid operation" << std::endl;
+			exit(EXIT_FAILURE);
+		default:
+			std::cout << "Error, program flow should never reach this" << std::endl;
+			exit(EXIT_FAILURE);
+		}
 	}
 
-	//empty the list
-	for(int z = 0; z < numberOfListElements; z++)
-	{
-		list->remove(z);
-	}
 	//writing to cout with one string (in one go) prohibites scrambling of messages
-	std::string message;
-	std::stringstream ss;
-	ss << std::this_thread::get_id();
-	message.append("Thread #");
-	message.append(ss.str());
-	message.append(" finishes\n");
-	std::cout << message;
+	//the output should not happen during performance testing, as it would only waste time
+	if(testMode == CORRECTNESS)
+	{
+		std::cout << std::dec;
+		std::string message;
+		std::stringstream ss;
+		ss << std::this_thread::get_id();
+		message.append("Thread #");
+		message.append(ss.str());
+		message.append(" finishes\n");
+		std::cout << message;
+	}
 }
 
 void PrintUsage(void)
