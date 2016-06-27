@@ -16,21 +16,35 @@
 #include <list>
 
 
-/****************************************Prototypes****************************************/
-void PrintUsage(void);
-void TestLists(std::list<ListOperation> inputList);
-void TestList(List *list, std::list<ListOperation> inputList);
-int SeqTestList(List *list); 		//predefined correctness test
-int ParTestList(List *list, std::list<ListOperation> inputList);
-int ParTestListIndividual(List *list, std::list<ListOperation> inputList);
-
-
 /****************************************Custom Types****************************************/
 enum TestMode {FULL, CORRECTNESS, PERFORMANCE};
+enum ListType {COARSE, FINE, OPT, LAZY, FREE};
+struct TestResult
+{
+	enum ListType listType;
+	char *fileName;
+	double duration;
+	unsigned int numberOfListElements;
+	unsigned int numberOfThreads;
+};
+
+
+/****************************************Prototypes****************************************/
+void PrintUsage(void);
+TestResult *TestLists(std::list<ListOperation> inputList);
+TestResult TestList(List *list, std::list<ListOperation> inputList);
+int SeqCorrTestList(List *list); 		//predefined correctness test
+int ParCorrTestList(List *list); 		//predefined correctness test
+std::chrono::duration<double, std::milli> ParTestList(List *list, std::list<ListOperation> inputList);
+void ParPerfTestListIndividual(List *list, std::list<ListOperation> inputList, std::chrono::time_point<std::chrono::high_resolution_clock> start);
+void ParCorrTestListIndividual(List *list);
+void WriteTestResult(TestResult result);
 
 
 /****************************************Constants****************************************/
 #define BUFFER_SIZE								1024
+#define WAIT_DURATION							1000		//in milliseconds
+#define NUMBER_OF_LIST_IMPLEMENTATIONS			5
 
 const char *OUTPUT_FILE_NAME = 					"TestResults.txt";
 const char *DEFAULT_FILE_NAME = 				"ListContent.txt";
@@ -46,7 +60,7 @@ char inputFileName[BUFFER_SIZE];
 std::ifstream inputFile;
 unsigned int numberOfListElements;	//the number of elements from the input file 
 
-unsigned int numberOfListElementsSeq = 10000;	//for the predefined sequential correctness test, which does not depend on any input data
+unsigned int numberOfListElementsCorr = 10000;	//for the predefined correctness tests, which do not depend on any input data
 
 /**
  * @brief	Performs a couple of tests considering the correctness and performance of different
@@ -54,7 +68,8 @@ unsigned int numberOfListElementsSeq = 10000;	//for the predefined sequential co
  * @details Call: listTest <numberOfThreads> <listFileName> <testMode>
  *		numberOfThreads:	the number of threads that are spawned
  *		listFileName:		the name of the file, which contains the list data to use for the tests
- *		testMode:			can be either string "full", "correctness", "performance"
+ *		testMode:			can be either string "full", "correctness", "performance" - don't use full
+ *							(may lead to erroneuos error message for the performance test)
  *							-) "full" indicates that a complete test should be performed using all implemented tests (correctness and performance)
  *							-) "correctness" indicates that only the correctness tests should be performed
  *							-) "performance" indicates that only the performance tests should be performed
@@ -158,18 +173,25 @@ int main(int argc, char *argv[])
 
 	numberOfListElements = inputList.size();
 
-	//DEBUG
-	std::cout << std::endl << "DEBUG, numberOfListElements: " << numberOfListElements << std::endl;
+	TestResult *result;
+	result = TestLists(inputList);
 
-	TestLists(inputList);
+	if(testMode == PERFORMANCE || testMode == FULL)
+	{
+		for(int z = 0; z < NUMBER_OF_LIST_IMPLEMENTATIONS; z++)
+		{
+			WriteTestResult(result[z]);
+		}
+	}
 
 	return EXIT_SUCCESS;
 }
 
 /**
  * @brief Creates list objects of different implementations and calls the TestList method for every one of them
+ * @returns A dynamically allocated array of objects of type TestResult
  */
-void TestLists(std::list<ListOperation> inputList)
+TestResult *TestLists(std::list<ListOperation> inputList)
 {
 	CoarseGrainedList	*cList =	new CoarseGrainedList();
 	FineGrainedList		*fList =	new FineGrainedList();
@@ -177,33 +199,37 @@ void TestLists(std::list<ListOperation> inputList)
 	LazyList			*lList =	new LazyList();
 	LockFreeList		*lfList =	new LockFreeList();
 
-	TestList(cList, inputList);
-	TestList(fList, inputList);
-	TestList(oList, inputList);
-	TestList(lList, inputList);
-	TestList(lfList, inputList);
+	TestResult *result = new TestResult[5];
 
-	delete cList;
-	delete fList;
-	delete oList;
-	delete lList;
-	delete lfList;
+	result[0] = TestList(cList, inputList);
+	result[1] = TestList(fList, inputList);
+	result[2] = TestList(oList, inputList);
+	result[3] = TestList(lList, inputList);
+	result[4] = TestList(lfList, inputList);
 
-	return;
+	//delete cList;
+	//delete fList;
+	//delete oList;
+	//delete lList;
+	//delete lfList;
+
+	return result;
 }
 
 /**
  * @brief Calls the actual test procedures for the list
+ * @returns An object of type TestResult
  * @param list Pointer to a list object that will be tested
  * @param inputList A list (conventional C++ list) filled with the list operations to be used
  *		  in the performance test
  */
-void TestList(List *list, std::list<ListOperation> inputList)
+TestResult TestList(List *list, std::list<ListOperation> inputList)
 {
 	const char *startMessageSeqCorr = NULL, *endMessageSeqCorr = NULL;
 	const char *startMessageParCorr = NULL, *endMessageParCorr = NULL;
 	const char *startMessageParPerf = NULL, *endMessageParPerf = NULL;
 	std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
+	TestResult result;
 
 	//set the messages according to the list type
 	if(typeid(*list) == typeid(CoarseGrainedList))
@@ -214,6 +240,7 @@ void TestList(List *list, std::list<ListOperation> inputList)
 		endMessageParCorr = "End Parallel Correctness Test of list with coarse-grained locks\n";
 		startMessageParPerf = "Start Parallel Performance Test of list with coarse-grained locks\n";
 		endMessageParPerf = "End Parallel Performance Test of list with coarse-grained locks\n";
+		result.listType = COARSE;
 	}
 	if(typeid(*list) == typeid(FineGrainedList))
 	{
@@ -223,6 +250,7 @@ void TestList(List *list, std::list<ListOperation> inputList)
 		endMessageParCorr = "End Parallel Correctness Test of list with fine-grained locks\n";
 		startMessageParPerf = "Start Parallel Performance Test of list with fine-grained locks\n";
 		endMessageParPerf = "End Parallel Performance Test of list with fine-grained locks\n";
+		result.listType = FINE;
 	}
 	if(typeid(*list) == typeid(OptList))
 	{
@@ -232,6 +260,7 @@ void TestList(List *list, std::list<ListOperation> inputList)
 		endMessageParCorr = "End Parallel Correctness Test of list with optimistic locking\n";
 		startMessageParPerf = "Start Parallel Performance Test of list with optimistic locking\n";
 		endMessageParPerf = "End Parallel Performance Test of list with optimistic locking\n";
+		result.listType = OPT;
 	}
 	if(typeid(*list) == typeid(LazyList))
 	{
@@ -241,6 +270,7 @@ void TestList(List *list, std::list<ListOperation> inputList)
 		endMessageParCorr = "End Parallel Correctness Test of lazy list\n";
 		startMessageParPerf = "Start Parallel Performance Test of lazy list\n";
 		endMessageParPerf = "End Parallel Performance Test of lazy list\n";
+		result.listType = LAZY;
 	}
 	if(typeid(*list) == typeid(LockFreeList))
 	{
@@ -250,53 +280,52 @@ void TestList(List *list, std::list<ListOperation> inputList)
 		endMessageParCorr = "End Parallel Correctness Test of lock-free list\n";
 		startMessageParPerf = "Start Parallel Performance Test of lock-free list\n";
 		endMessageParPerf = "End Parallel Performance Test of lock-free list\n";
+		result.listType = FREE;
 	}
 
 	if(testMode == FULL || testMode == CORRECTNESS)
 	{
 		//sequential correctness test
 		std::cout << startMessageSeqCorr;
-		start = std::chrono::high_resolution_clock::now();
-		SeqTestList(list);
-		end = std::chrono::high_resolution_clock::now();
+		SeqCorrTestList(list);
 		std::cout << endMessageSeqCorr;
-		std::cout << "File used: " << inputFileName << std::endl;
-		std::cout << "Required time: " << std::chrono::duration<double, std::milli>(end-start).count() << "ms" << std::endl << std::endl;
+		std::cout << "File used: " << inputFileName << std::endl << std::endl;
 
 		//parallel correctness test
 		std::cout << startMessageParCorr;
-		start = std::chrono::high_resolution_clock::now();
 		ParTestList(list, inputList);
-		end = std::chrono::high_resolution_clock::now();
 		std::cout << endMessageParCorr;
-		std::cout << "File used: " << inputFileName << std::endl;
-		std::cout << "Required time: " << std::chrono::duration<double, std::milli>(end-start).count() << "ms" << std::endl << std::endl;
+		std::cout << "File used: " << inputFileName << std::endl << std::endl;
 	}
 
 	if(testMode == FULL || testMode == PERFORMANCE)
 	{
 		std::cout << startMessageParPerf;
-		start = std::chrono::high_resolution_clock::now();
-		ParTestList(list, inputList);
-		end = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double, std::milli> duration = ParTestList(list, inputList);
 		std::cout << endMessageParPerf;
 		std::cout << "File used: " << inputFileName << std::endl;
-		std::cout << "Required time: " << std::chrono::duration<double, std::milli>(end-start).count() << "ms" << std::endl << std::endl;
+		std::cout << "Required time: " << duration.count() << "ms" << std::endl << std::endl;
+		result.fileName = inputFileName;
+		result.duration = duration.count();
+		result.numberOfListElements = numberOfListElements;
+		result.numberOfThreads = numberOfThreads;
 	}
+
+	return result;
 }
 
 /**
  * @brief A sequential correctness test
  */
-int SeqTestList(List *list)
+int SeqCorrTestList(List *list)
 {
 	//fill the list from front to back
-	for(int z = numberOfListElementsSeq - 1; z >= 0; z--)
+	for(int z = numberOfListElementsCorr - 1; z >= 0; z--)
 	{
 		list->add(z);
 	}
 	//check whether it really contains all the added elements
-	for(int z = 0; z < numberOfListElementsSeq; z++)
+	for(int z = 0; static_cast<unsigned int>(z) < numberOfListElementsCorr; z++)
 	{
 		if(!list->contains(z))
 		{
@@ -305,7 +334,7 @@ int SeqTestList(List *list)
 		}
 	}
 	//remove all the elements in the list
-	for(int z = 0; z < numberOfListElementsSeq; z++)
+	for(int z = 0; static_cast<unsigned int>(z) < numberOfListElementsCorr; z++)
 	{
 		list->remove(z);
 	}
@@ -319,39 +348,61 @@ int SeqTestList(List *list)
 	}
 }
 
+
 /**
- * @brief A parallel correctness test
+ * @brief A parallel test of the list implementations
+ * @detail Generates threads, which perform certain tests
  */
-int ParTestList(List *list, std::list<ListOperation> inputList)
+std::chrono::duration<double, std::milli> ParTestList(List *list, std::list<ListOperation> inputList)
 {
 	std::thread *threads[numberOfThreads];
+	std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
 
-	for(int z = 0; z < numberOfThreads; z++)
+	if(testMode == PERFORMANCE || testMode == FULL)
 	{
-		threads[z] = new std::thread(ParTestListIndividual, list, std::list<ListOperation>(inputList));
+		//start of the time measurement after 1 second
+		start = std::chrono::high_resolution_clock::now() + std::chrono::duration<long, std::milli>(WAIT_DURATION);
+		for(int z = 0; static_cast<unsigned int>(z) < numberOfThreads; z++)
+		{
+			threads[z] = new std::thread(ParPerfTestListIndividual, list, std::list<ListOperation>(inputList), start);
+		}
+	}
+	if(testMode == CORRECTNESS || testMode == FULL)
+	{
+		for(int z = 0; static_cast<unsigned int>(z) < numberOfThreads; z++)
+		{
+			threads[z] = new std::thread(ParCorrTestListIndividual, list);
+		}
 	}
 	
-	sleep(0);
+	//sleep(0);
 	//wait for all the threads until they have finished
-	for(int z = 0; z < numberOfThreads; z++)
+	for(int z = 0; static_cast<unsigned int>(z) < numberOfThreads; z++)
 	{
 		threads[z]->join();
 	}
+	end = std::chrono::high_resolution_clock::now();
 
-	////check whether the list is empty
-	//if(list->isEmpty())
-	//	return EXIT_SUCCESS;
-	//else
-	//{
-	//	std::cout << "Error, the list should be empty" << std::endl;
-	//	return EXIT_FAILURE;
-	//}
+	if(testMode == CORRECTNESS)
+	{
+		//check whether the list is empty
+		if(list->isEmpty())
+			//for a correctness test always return a duration of 0
+			return std::chrono::duration<double, std::milli>(0);
+		else
+		{
+			std::cout << "Error, the list should be empty" << std::endl;
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	return std::chrono::duration<double, std::milli>(end-start);
 }
 
-int ParTestListIndividual(List *list, std::list<ListOperation> inputList)
+void ParPerfTestListIndividual(List *list, std::list<ListOperation> inputList, std::chrono::time_point<std::chrono::high_resolution_clock> start)
 {
 	//should prevent this thread from finishing too fast, since we want as much contention as possible
-	sleep(0);
+	std::this_thread::sleep_until(start);
 	
 	for(std::list<ListOperation>::iterator it = inputList.begin(); !inputList.empty() && it != inputList.end(); it++)
 	{
@@ -374,24 +425,96 @@ int ParTestListIndividual(List *list, std::list<ListOperation> inputList)
 			exit(EXIT_FAILURE);
 		}
 	}
+}
+
+/**
+ * @brief A parallel correctness test
+ */
+void ParCorrTestListIndividual(List *list)
+{
+	//add elements to the list
+	for(int z = 0; static_cast<unsigned int>(z) < numberOfListElementsCorr; z++)
+	{
+		list->add(z);
+	}
+	//remove them again from the list
+	for(int z = static_cast<int>(numberOfListElementsCorr - 1); z >= 0; z--)
+	{
+		list->remove(z);
+	}
 
 	//writing to cout with one string (in one go) prohibites scrambling of messages
 	//the output should not happen during performance testing, as it would only waste time
-	if(testMode == CORRECTNESS)
-	{
-		std::cout << std::dec;
-		std::string message;
-		std::stringstream ss;
-		ss << std::this_thread::get_id();
-		message.append("Thread #");
-		message.append(ss.str());
-		message.append(" finishes\n");
-		std::cout << message;
-	}
+	std::cout << std::dec;
+	std::string message;
+	std::stringstream ss;
+	ss << std::this_thread::get_id();
+	message.append("Thread #");
+	message.append(ss.str());
+	message.append(" finishes\n");
+	std::cout << message;
 }
 
 void PrintUsage(void)
 {
 	std::cout << "usage: listTest <numberOfThreads> <listFileName> <testMode>" << std::endl
 	<< "or alternatively: listTest" << std::endl << "(uses default values)" << std::endl;
+}
+
+/**
+ * @brief Writes the results of a test run to a file
+ * @details It uses the following format:
+ *			 <type> <filename> <duration in milliseconds> <number of list elements> <number of threads>
+ *			type: either "coarse", "fine", "opt", "lazy", "free"
+ *			filename: the name of the input file
+ *			duration: the duration of the test run in milliseconds
+ */
+void WriteTestResult(TestResult result)
+{
+	std::ofstream outputFile;
+	char buffer[BUFFER_SIZE];
+
+	strcat(strcpy(buffer, "./"), OUTPUT_FILE_NAME);
+	try
+	{
+		outputFile.open(buffer, std::fstream::app);
+	}
+	catch(std::exception ex)
+	{
+		//ignore the exception, error handling regarding failure to open file follows below
+	}
+	if((outputFile.rdstate() & std::fstream::failbit) != 0)
+	{
+		std::cout << "Error when opening file: " << OUTPUT_FILE_NAME << std::endl;
+		exit(EXIT_FAILURE);
+	}
+
+	//construct the character string to write to the file
+	switch(result.listType)
+	{
+	case COARSE:
+		strcpy(buffer, "coarse ");
+		break;
+	case FINE:
+		strcpy(buffer, "fine ");
+		break;
+	case OPT:
+		strcpy(buffer, "opt ");
+		break;
+	case LAZY:
+		strcpy(buffer, "lazy ");
+		break;
+	case FREE:
+		strcpy(buffer, "free ");
+		break;
+	default:
+		std::cout << "Error, program flow should never enter this section" << std::endl;
+		exit(EXIT_FAILURE);
+	}
+
+	strcat(strcat(strcat(buffer, result.fileName), " "), std::to_string(result.duration).c_str());
+	strcat(strcat(buffer, " "), std::to_string(result.numberOfListElements).c_str());
+	strcat(strcat(buffer, " "), std::to_string(result.numberOfThreads).c_str());
+	strcat(buffer, "\n");
+	outputFile.write(buffer, strlen(buffer));
 }

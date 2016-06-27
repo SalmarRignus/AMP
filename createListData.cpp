@@ -7,8 +7,8 @@
 
 
 #define BUFFER_SIZE 		1024
-#define NUMBER_OF_ELEMENTS	50000
-#define MAX_WRITE			20
+#define NUMBER_OF_ELEMENTS	5000
+#define MAX_WRITE			10
 
 
 const char *SEQ_ORDERED_DATA_FILENAME = "ListContentCorrSort.txt";
@@ -39,7 +39,7 @@ int WriteOp(std::ofstream& fileStream, struct ListOperation listOperation);
  */
 int main(int argc, char *argv[])
 {
-	char buffer[BUFFER_SIZE];
+	//char buffer[BUFFER_SIZE];
 	std::ofstream sequOrderedDataFile;
 	std::ofstream sequBackwardsOrderedDataFile;
 	std::ofstream correctnessDataFile;
@@ -303,6 +303,9 @@ enum Operation SelectOp(int& containsOpCount, int& addOpCount, int& removeOpCoun
 			return REMOVE;
 		}
 	}
+
+	//control should never reach this part
+	return FAIL;
 }
 
 /**

@@ -9,6 +9,7 @@ public:
 	virtual bool add(int item) {return false;}
 	virtual bool remove(int item) {return false;}
 	virtual bool isEmpty(void) {return false;}
+	//virtual ~List();
 };
 
 #endif

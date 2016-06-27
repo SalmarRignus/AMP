@@ -1,0 +1,49 @@
+Host saturn
+HostName saturn.par.tuwien.ac.at
+Port 22
+User e1125213
+IdentityFile ~/.ssh/id_rsa
+ProxyCommand ssh -p 1022 -q -W %h:%p %r@venus.par.tuwien.ac.at
+TCPKeepAlive yes
+ServerAliveInterval 180
+ServerAliveCountMax 2
+
+Host mars
+HostName mars.par.tuwien.ac.at
+Port 22
+User e1125213
+IdentityFile ~/.ssh/id_rsa
+ProxyCommand ssh -p 1022 -q -W %h:%p %r@venus.par.tuwien.ac.at
+TCPKeepAlive yes
+ServerAliveInterval 180
+ServerAliveCountMax 2
+
+Host ceres
+HostName ceres.par.tuwien.ac.at
+Port 22
+User e1125213
+IdentityFile ~/.ssh/id_rsa
+ProxyCommand ssh -p 1022 -q -W %h:%p %r@venus.par.tuwien.ac.at
+TCPKeepAlive yes
+ServerAliveInterval 180
+ServerAliveCountMax 2
+
+Host jupiter
+HostName jupiter.par.tuwien.ac.at
+Port 22
+User e1125213
+IdentityFile ~/.ssh/id_rsa
+ProxyCommand ssh -p 1022 -q -W %h:%p %r@venus.par.tuwien.ac.at
+TCPKeepAlive yes
+ServerAliveInterval 180
+ServerAliveCountMax 2
+
+Host pluto
+HostName pluto.par.tuwien.ac.at
+Port 22
+User e1125213
+IdentityFile ~/.ssh/id_rsa
+ProxyCommand ssh -p 1022 -q -W %h:%p %r@venus.par.tuwien.ac.at
+TCPKeepAlive yes
+ServerAliveInterval 180
+ServerAliveCountMax 2
