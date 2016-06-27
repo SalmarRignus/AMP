@@ -34,9 +34,8 @@ void PrintUsage(void);
 TestResult *TestLists(std::list<ListOperation> inputList);
 TestResult TestList(List *list, std::list<ListOperation> inputList);
 int SeqCorrTestList(List *list); 		//predefined correctness test
-int ParCorrTestList(List *list); 		//predefined correctness test
 std::chrono::duration<double, std::milli> ParTestList(List *list, std::list<ListOperation> inputList);
-void ParPerfTestListIndividual(List *list, std::list<ListOperation> inputList, std::chrono::time_point<std::chrono::high_resolution_clock> start);
+void ParPerfTestListIndividual(List *list, std::list<ListOperation> inputList);
 void ParCorrTestListIndividual(List *list);
 void WriteTestResult(TestResult result);
 
@@ -61,6 +60,8 @@ std::ifstream inputFile;
 unsigned int numberOfListElements;	//the number of elements from the input file 
 
 unsigned int numberOfListElementsCorr = 10000;	//for the predefined correctness tests, which do not depend on any input data
+
+std::mutex canStart;
 
 /**
  * @brief	Performs a couple of tests considering the correctness and performance of different
@@ -358,13 +359,13 @@ std::chrono::duration<double, std::milli> ParTestList(List *list, std::list<List
 	std::thread *threads[numberOfThreads];
 	std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
 
+	//this lock prevents the called threads from starting
+	canStart.lock();
 	if(testMode == PERFORMANCE || testMode == FULL)
 	{
-		//start of the time measurement after 1 second
-		start = std::chrono::high_resolution_clock::now() + std::chrono::duration<long, std::milli>(WAIT_DURATION);
 		for(int z = 0; static_cast<unsigned int>(z) < numberOfThreads; z++)
 		{
-			threads[z] = new std::thread(ParPerfTestListIndividual, list, std::list<ListOperation>(inputList), start);
+			threads[z] = new std::thread(ParPerfTestListIndividual, list, std::list<ListOperation>(inputList));
 		}
 	}
 	if(testMode == CORRECTNESS || testMode == FULL)
@@ -374,8 +375,11 @@ std::chrono::duration<double, std::milli> ParTestList(List *list, std::list<List
 			threads[z] = new std::thread(ParCorrTestListIndividual, list);
 		}
 	}
+	//order of starting the time measurement and the unlocking operation may affect the result
+	start = std::chrono::high_resolution_clock::now();
+	//unlocking unleashes the individual threads
+	canStart.unlock();
 	
-	//sleep(0);
 	//wait for all the threads until they have finished
 	for(int z = 0; static_cast<unsigned int>(z) < numberOfThreads; z++)
 	{
@@ -399,11 +403,13 @@ std::chrono::duration<double, std::milli> ParTestList(List *list, std::list<List
 	return std::chrono::duration<double, std::milli>(end-start);
 }
 
-void ParPerfTestListIndividual(List *list, std::list<ListOperation> inputList, std::chrono::time_point<std::chrono::high_resolution_clock> start)
+void ParPerfTestListIndividual(List *list, std::list<ListOperation> inputList)
 {
-	//should prevent this thread from finishing too fast, since we want as much contention as possible
-	std::this_thread::sleep_until(start);
-	
+	//std::this_thread::sleep_until(start);
+	//thread can only start after the main thread has unlocked this lock
+	canStart.lock();
+	canStart.unlock();
+
 	for(std::list<ListOperation>::iterator it = inputList.begin(); !inputList.empty() && it != inputList.end(); it++)
 	{
 		switch(it->operation)
