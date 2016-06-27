@@ -517,4 +517,5 @@ void WriteTestResult(TestResult result)
 	strcat(strcat(buffer, " "), std::to_string(result.numberOfThreads).c_str());
 	strcat(buffer, "\n");
 	outputFile.write(buffer, strlen(buffer));
+	outputFile.close();
 }

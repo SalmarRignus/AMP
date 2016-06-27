@@ -6,9 +6,9 @@
 #include "listOperation.h"
 
 
-#define BUFFER_SIZE 		1024
-#define NUMBER_OF_ELEMENTS	5000
-#define MAX_WRITE			10
+#define BUFFER_SIZE 				1024
+#define DEFAULT_numberOfElements	5000
+#define MAX_WRITE					10
 
 
 const char *SEQ_ORDERED_DATA_FILENAME = "ListContentCorrSort.txt";
@@ -22,6 +22,8 @@ const char *RANDOM_DATA_FILENAME_40_30_30 = "ListContentRandom_40_30_30.txt";
 const char *FRONT_HEAVY_DATA_FILENAME = "ListContentFront.txt";
 const char *BACK_HEAVY_DATA_FILENAME = "ListContentBackHeavy.txt";
 
+unsigned int numberOfElements;
+
 
 enum Operation SelectOp(int& containsOpCount, int& addOpCount, int& removeOpCount);
 int WriteOp(std::ofstream& fileStream, struct ListOperation listOperation);
@@ -29,13 +31,16 @@ int WriteOp(std::ofstream& fileStream, struct ListOperation listOperation);
 
 /**
  * @brief Creates a bunch of files containing list operations with one operation on each line with the following
- * format (example):
- *			...
- *			add 0
- *			add 5
- *			remove 5
- *			contains 0
- *			...
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * format (example):																							 *
+ *			...																									 *
+ *			add 0																								 *
+ *			add 5																								 *
+ *			remove 5																							 *
+ *			contains 0																							 *
+ *			...																									 *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * call: createListData |<number of elements>|
  */
 int main(int argc, char *argv[])
 {
@@ -55,6 +60,23 @@ int main(int argc, char *argv[])
 	int addOpCount;
 	int removeOpCount;
 	struct ListOperation listOperation;
+
+	if(argc > 1)
+	{
+		try
+		{
+			numberOfElements = std::stoul(std::string(argv[1]), NULL, 10);
+		}
+		catch(std::invalid_argument ex)
+		{
+			std::cout << "Invalid argument for numberOfElements" << std::endl;
+			return EXIT_FAILURE;
+		}
+	}
+	else
+	{
+		numberOfElements = DEFAULT_numberOfElements;
+	}
 
 
 	srand(time(NULL));
@@ -128,7 +150,7 @@ int main(int argc, char *argv[])
 	}
 
 	//generate the ascending sorted list data with ADD operations only
-	for(int z = 0; z < NUMBER_OF_ELEMENTS; z++)
+	for(int z = 0; static_cast<unsigned int>(z) < numberOfElements; z++)
 	{
 		listOperation.operation = ADD; listOperation.data = z;
 		WriteOp(sequOrderedDataFile, listOperation);
@@ -136,7 +158,7 @@ int main(int argc, char *argv[])
 	sequOrderedDataFile.close();
 
 	//generate the descending sorted list data with ADD operations only
-	for(int z = NUMBER_OF_ELEMENTS-1; z >= 0; z--)
+	for(int z = static_cast<int>(numberOfElements-1); z >= 0; z--)
 	{
 		listOperation.operation = ADD; listOperation.data = z;
 		WriteOp(sequBackwardsOrderedDataFile, listOperation);
@@ -144,12 +166,12 @@ int main(int argc, char *argv[])
 	sequBackwardsOrderedDataFile.close();
 
 	//generate the list operations for the parallel correctness test
-	for(int z = 0; z < NUMBER_OF_ELEMENTS; z++)
+	for(int z = 0; static_cast<unsigned int>(z) < numberOfElements; z++)
 	{
 		listOperation.operation = ADD; listOperation.data = z;
 		WriteOp(correctnessDataFile, listOperation);
 	}
-	for(int z = 0; z < NUMBER_OF_ELEMENTS; z++)
+	for(int z = 0; static_cast<unsigned int>(z) < numberOfElements; z++)
 	{
 		listOperation.operation = REMOVE; listOperation.data = z;
 		WriteOp(correctnessDataFile, listOperation);
@@ -158,13 +180,13 @@ int main(int argc, char *argv[])
 
 	//generate a pseudo random list of data with a random order of operations,
 	//consisting of 80% CONTAINS, 10% ADD and 10% REMOVE operations
-	containsOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.8);
-	addOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.1);
-	removeOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.1);
-	for(int z = 0; z < NUMBER_OF_ELEMENTS; z++)
+	containsOpCount = static_cast<int>(numberOfElements * 0.8);
+	addOpCount = static_cast<int>(numberOfElements * 0.1);
+	removeOpCount = static_cast<int>(numberOfElements * 0.1);
+	for(int z = 0; static_cast<unsigned int>(z) < numberOfElements; z++)
 	{
 		listOperation.operation = SelectOp(containsOpCount, addOpCount, removeOpCount);
-		listOperation.data = rand() % NUMBER_OF_ELEMENTS;
+		listOperation.data = rand() % numberOfElements;
 		if(WriteOp(randomDataFile_80_10_10, listOperation) == EXIT_FAILURE)
 		{
 			std::cout << "Error in WriteOp() (most likely listOperation.operation == FAIL)" << std::endl;
@@ -175,13 +197,13 @@ int main(int argc, char *argv[])
 
 	//generate a pseudo random list of data with a random order of operations,
 	//consisting of 70% CONTAINS, 20% ADD and 10% REMOVE operations
-	containsOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.7);
-	addOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.2);
-	removeOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.1);
-	for(int z = 0; z < NUMBER_OF_ELEMENTS; z++)
+	containsOpCount = static_cast<int>(numberOfElements * 0.7);
+	addOpCount = static_cast<int>(numberOfElements * 0.2);
+	removeOpCount = static_cast<int>(numberOfElements * 0.1);
+	for(int z = 0; static_cast<unsigned int>(z) < numberOfElements; z++)
 	{
 		listOperation.operation = SelectOp(containsOpCount, addOpCount, removeOpCount);
-		listOperation.data = rand() % NUMBER_OF_ELEMENTS;
+		listOperation.data = rand() % numberOfElements;
 		if(WriteOp(randomDataFile_70_20_10, listOperation) == EXIT_FAILURE)
 		{
 			std::cout << "Error in WriteOp() (most likely listOperation.operation == FAIL)" << std::endl;
@@ -192,13 +214,13 @@ int main(int argc, char *argv[])
 
 	//generate a pseudo random list of data with a random order of operations,
 	//consisting of 60% CONTAINS, 20% ADD and 20% REMOVE operations
-	containsOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.6);
-	addOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.2);
-	removeOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.2);
-	for(int z = 0; z < NUMBER_OF_ELEMENTS; z++)
+	containsOpCount = static_cast<int>(numberOfElements * 0.6);
+	addOpCount = static_cast<int>(numberOfElements * 0.2);
+	removeOpCount = static_cast<int>(numberOfElements * 0.2);
+	for(int z = 0; static_cast<unsigned int>(z) < numberOfElements; z++)
 	{
 		listOperation.operation = SelectOp(containsOpCount, addOpCount, removeOpCount);
-		listOperation.data = rand() % NUMBER_OF_ELEMENTS;
+		listOperation.data = rand() % numberOfElements;
 		if(WriteOp(randomDataFile_60_20_20, listOperation) == EXIT_FAILURE)
 		{
 			std::cout << "Error in WriteOp() (most likely listOperation.operation == FAIL)" << std::endl;
@@ -209,13 +231,13 @@ int main(int argc, char *argv[])
 
 	//generate a pseudo random list of data with a random order of operations,
 	//consisting of 50% CONTAINS, 35% ADD and 15% REMOVE operations
-	containsOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.5);
-	addOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.35);
-	removeOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.15);
-	for(int z = 0; z < NUMBER_OF_ELEMENTS; z++)
+	containsOpCount = static_cast<int>(numberOfElements * 0.5);
+	addOpCount = static_cast<int>(numberOfElements * 0.35);
+	removeOpCount = static_cast<int>(numberOfElements * 0.15);
+	for(int z = 0; static_cast<unsigned int>(z) < numberOfElements; z++)
 	{
 		listOperation.operation = SelectOp(containsOpCount, addOpCount, removeOpCount);
-		listOperation.data = rand() % NUMBER_OF_ELEMENTS;
+		listOperation.data = rand() % numberOfElements;
 		if(WriteOp(randomDataFile_50_35_15, listOperation) == EXIT_FAILURE)
 		{
 			std::cout << "Error in WriteOp() (most likely listOperation.operation == FAIL)" << std::endl;
@@ -226,13 +248,13 @@ int main(int argc, char *argv[])
 
 	//generate a pseudo random list of data with a random order of operations,
 	//consisting of 40% CONTAINS, 30% ADD and 30% REMOVE operations
-	containsOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.4);
-	addOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.3);
-	removeOpCount = static_cast<int>(NUMBER_OF_ELEMENTS * 0.3);
-	for(int z = 0; z < NUMBER_OF_ELEMENTS; z++)
+	containsOpCount = static_cast<int>(numberOfElements * 0.4);
+	addOpCount = static_cast<int>(numberOfElements * 0.3);
+	removeOpCount = static_cast<int>(numberOfElements * 0.3);
+	for(int z = 0; static_cast<unsigned int>(z) < numberOfElements; z++)
 	{
 		listOperation.operation = SelectOp(containsOpCount, addOpCount, removeOpCount);
-		listOperation.data = rand() % NUMBER_OF_ELEMENTS;
+		listOperation.data = rand() % numberOfElements;
 		if(WriteOp(randomDataFile_40_30_30, listOperation) == EXIT_FAILURE)
 		{
 			std::cout << "Error in WriteOp() (most likely listOperation.operation == FAIL)" << std::endl;
@@ -243,7 +265,7 @@ int main(int argc, char *argv[])
 
 	/*XXX not sure how to fill the following two files or how to actually use them ... */
 	//generate the "front heavy" list data
-	//for(unsigned int z = 0; z < NUMBER_OF_ELEMENTS; z++)
+	//for(unsigned int z = 0; z < numberOfElements; z++)
 	//{
 	//	strcpy(buffer, std::to_string(z).c_str());
 	//	frontHeavyDataFile.write(buffer, strlen(buffer));
@@ -252,7 +274,7 @@ int main(int argc, char *argv[])
 	frontHeavyDataFile.close();
 
 	////generate the "back heavy" list data
-	//for(unsigned int z = 0; z < NUMBER_OF_ELEMENTS; z++)
+	//for(unsigned int z = 0; z < numberOfElements; z++)
 	//{
 	//	strcpy(buffer, std::to_string(z).c_str());
 	//	backHeavyDataFile.write(buffer, strlen(buffer));
