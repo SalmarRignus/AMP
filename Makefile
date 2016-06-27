@@ -1,5 +1,5 @@
 #compile with c11 standard and enable 16bit CAS (compare and swap) operation
-FLAGS = -std=c++11 -mcx16
+FLAGS = -std=c++11 -mcx16 -Wall
 
 all:
 	#listTest: fineList.cpp fineList.h coarseList.cpp coarseList.h optList.cpp optList.h lazyList.cpp lazyList.h lFreeList.cpp lFreeList.h listTest.cpp node.cpp window.cpp
