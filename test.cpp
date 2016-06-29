@@ -12,9 +12,9 @@ int main(int argc, char *argv[])
 
 	system(strcat(strcat(strcpy(buffer, "./listTest "), std::to_string(MAX_THREADS).c_str()), " ListContentCorrectness.txt correctness"));
 
-	for(int threads = 0; threads < MAX_THREADS; threads++)
+	for(int z = 0; z < NUMBER_OF_INDIV_TESTRUNS; z++)
 	{
-		for(int z = 0; z < NUMBER_OF_INDIV_TESTRUNS; z++)
+		for(int threads = 1; threads <= MAX_THREADS; threads++)
 		{
 			system(strcat(strcat(strcpy(buffer, "./listTest "), std::to_string(threads).c_str()), " ListContentCorrSort.txt performance"));
 			system(strcat(strcat(strcpy(buffer, "./listTest "), std::to_string(threads).c_str()), " ListContentBackSort.txt performance"));
