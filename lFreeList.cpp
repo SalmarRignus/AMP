@@ -11,6 +11,10 @@ LockFreeList::LockFreeList(void)
 {
 	tail = new Node(std::numeric_limits<int>::max(), NULL);
 	head = new Node(std::numeric_limits<int>::min(), tail);
+
+	std::cout << alignof(Node) << std::endl;
+	//std::cout << std::boolalpha;
+	//std::cout << "Is implementation lock-free?\n" << head->getAtomics()->is_lock_free() << std::endl << std::endl;
 }
 
 /**
@@ -47,10 +51,11 @@ LockFreeList::Window LockFreeList::find(int item)
 
 		while(true)
 		{
+			Node *succ = curr->getNext();
 			while(curr->isErased())
 			{
 				AtomicElements AEPred(curr, false);
-				AtomicElements AECurr(curr->getNext(), false);
+				AtomicElements AECurr(succ, false);
 
 				//unlink curr from the list
 #ifndef COMPARE_EXCHANGE_WEAK
@@ -60,7 +65,8 @@ LockFreeList::Window LockFreeList::find(int item)
 				if(!pred->getAtomics()->compare_exchange_weak(AEPred, AECurr))
 					goto retry;
 #endif
-				curr = curr->getNext();
+				curr = succ;
+				succ = succ->getNext();
 			}
 
 			if(curr->getItem() >= item)
@@ -97,29 +103,31 @@ bool LockFreeList::contains(int item)
  */
 bool LockFreeList::add(int item)
 {
+	Window w(NULL, NULL);
+
 	while(true)
 	{
-		Window w = find(item);
+		w = find(item);
+		Node *pred = w.pred;
+		Node *curr = w.curr;
 		
 		if(w.curr->getItem() == item)
-		{
 			return false;
-		}
 		else
 		{
-			Node *node = new Node(item, w.curr);
+			Node *node = new Node(item, curr);
 
-			AtomicElements AEPred(w.curr, false);
+			AtomicElements AEPred(curr, false);
 			AtomicElements AENode(node, false);
 
 			//if the next pointer of pred still points to curr and it is not marked as erased,
 			//then atomically insert the new node
 #ifndef COMPARE_EXCHANGE_WEAK
-			if(w.pred->getAtomics()->compare_exchange_strong(AEPred, AENode))
-				return true;
-			if(w.pred->getAtomics()->compare_exchange_weak(AEPred, AENode))
+			if(pred->getAtomics()->compare_exchange_strong(AEPred, AENode))
 				return true;
 #else
+			if(pred->getAtomics()->compare_exchange_weak(AEPred, AENode))
+				return true;
 #endif
 		}
 	}
@@ -133,9 +141,11 @@ bool LockFreeList::add(int item)
  */
 bool LockFreeList::remove(int item)
 {
+	Window w(NULL, NULL);
+
 	while(true)
 	{
-		Window w = find(item);
+		w = find(item);
 		if(w.curr->getItem() == item)
 		{
 			Node *succ = w.curr->getNext();
@@ -152,7 +162,7 @@ bool LockFreeList::remove(int item)
 				continue;
 #endif
 
-			AtomicElements AEPred(w.curr, true);
+			AtomicElements AEPred(w.curr, false);
 			//try to unlink curr from the list if it still exists
 #ifndef COMPARE_EXCHANGE_WEAK
 			w.pred->getAtomics()->compare_exchange_strong(AEPred, AECurr);
@@ -163,9 +173,7 @@ bool LockFreeList::remove(int item)
 			return true;
 		}
 		else
-		{
 			return false;
-		}
 	}
 }
 

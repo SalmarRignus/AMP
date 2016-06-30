@@ -13,11 +13,11 @@
 #include <cstring>
 #include <sstream>
 #include <chrono>
-#include <list>
+#include <vector>
 
 
 /****************************************Custom Types****************************************/
-enum TestMode {FULL, CORRECTNESS, PERFORMANCE};
+enum TestMode {CORRECTNESS, PERFORMANCE};
 enum ListType {COARSE, FINE, OPT, LAZY, FREE};
 struct TestResult
 {
@@ -31,12 +31,14 @@ struct TestResult
 
 /****************************************Prototypes****************************************/
 void PrintUsage(void);
-TestResult *TestLists(std::list<ListOperation> inputList);
-TestResult TestList(List *list, std::list<ListOperation> inputList);
-int SeqCorrTestList(List *list); 		//predefined correctness test
-std::chrono::duration<double, std::milli> ParTestList(List *list, std::list<ListOperation> inputList);
-void ParPerfTestListIndividual(List *list, std::list<ListOperation> inputList);
-void ParCorrTestListIndividual(List *list);
+TestResult *TestLists(std::vector<ListOperation> inputList);
+TestResult TestList(List *list, std::vector<ListOperation> inputList);
+int SeqCorrTestList(List *list); 																			//predefined correctness test
+std::chrono::duration<double, std::milli> ParTestList(List *list, std::vector<ListOperation> inputList);
+void ParPerfTestListIndividual(List *list, std::vector<ListOperation> inputList);							
+void ParCorrTestListIndividual1(List *list, unsigned int *addCounter, unsigned int *removeCounter);			//predefined correctness test
+void ParCorrTestListIndividual2(List *list, unsigned int offset);											//predefined correctness test
+void ParCorrTestListIndividual3(List *list, unsigned int ID);												//predefined correctness test
 void WriteTestResult(TestResult result);
 
 
@@ -48,7 +50,7 @@ void WriteTestResult(TestResult result);
 const char *OUTPUT_FILE_NAME = 					"TestResults.txt";
 const char *DEFAULT_FILE_NAME = 				"ListContent.txt";
 const unsigned int DEFAULT_NUMBER_OF_THREADS = 	50;
-const enum	TestMode DEFAULT_TEST_MODE =		FULL;
+const enum	TestMode DEFAULT_TEST_MODE =		PERFORMANCE;
 
 
 /****************************************global variables****************************************/
@@ -69,16 +71,15 @@ std::mutex canStart;
  * @details Call: listTest <numberOfThreads> <listFileName> <testMode>
  *		numberOfThreads:	the number of threads that are spawned
  *		listFileName:		the name of the file, which contains the list data to use for the tests
- *		testMode:			can be either string "full", "correctness", "performance" - don't use full
+ *		testMode:			can be either string "correctness", "performance"
  *							(may lead to erroneuos error message for the performance test)
- *							-) "full" indicates that a complete test should be performed using all implemented tests (correctness and performance)
  *							-) "correctness" indicates that only the correctness tests should be performed
  *							-) "performance" indicates that only the performance tests should be performed
  */
 int main(int argc, char *argv[])
 {
 	char buffer[BUFFER_SIZE];
-	std::list<ListOperation> inputList;
+	std::vector<ListOperation> inputList;
 
 
 	//parse the command line
@@ -102,9 +103,7 @@ int main(int argc, char *argv[])
 		}
 		strncpy(inputFileName, argv[2], BUFFER_SIZE);
 		inputFileName[BUFFER_SIZE-1] = '\0';
-		if(strcmp(argv[3], "full") == 0)
-			testMode = FULL;
-		else if(strcmp(argv[3], "correctness") == 0)
+		if(strcmp(argv[3], "correctness") == 0)
 			testMode = CORRECTNESS;
 		else if(strcmp(argv[3], "performance") == 0)
 			testMode = PERFORMANCE;
@@ -177,7 +176,7 @@ int main(int argc, char *argv[])
 	TestResult *result;
 	result = TestLists(inputList);
 
-	if(testMode == PERFORMANCE || testMode == FULL)
+	if(testMode == PERFORMANCE)
 	{
 		for(int z = 0; z < NUMBER_OF_LIST_IMPLEMENTATIONS; z++)
 		{
@@ -192,7 +191,7 @@ int main(int argc, char *argv[])
  * @brief Creates list objects of different implementations and calls the TestList method for every one of them
  * @returns A dynamically allocated array of objects of type TestResult
  */
-TestResult *TestLists(std::list<ListOperation> inputList)
+TestResult *TestLists(std::vector<ListOperation> inputList)
 {
 	CoarseGrainedList	*cList =	new CoarseGrainedList();
 	FineGrainedList		*fList =	new FineGrainedList();
@@ -224,7 +223,7 @@ TestResult *TestLists(std::list<ListOperation> inputList)
  * @param inputList A list (conventional C++ list) filled with the list operations to be used
  *		  in the performance test
  */
-TestResult TestList(List *list, std::list<ListOperation> inputList)
+TestResult TestList(List *list, std::vector<ListOperation> inputList)
 {
 	const char *startMessageSeqCorr = NULL, *endMessageSeqCorr = NULL;
 	const char *startMessageParCorr = NULL, *endMessageParCorr = NULL;
@@ -284,22 +283,22 @@ TestResult TestList(List *list, std::list<ListOperation> inputList)
 		result.listType = FREE;
 	}
 
-	if(testMode == FULL || testMode == CORRECTNESS)
+	if(testMode == CORRECTNESS)
 	{
 		//sequential correctness test
 		std::cout << startMessageSeqCorr;
 		SeqCorrTestList(list);
-		std::cout << endMessageSeqCorr;
-		std::cout << "File used: " << inputFileName << std::endl << std::endl;
+		std::cout << endMessageSeqCorr << std::endl;
+		//std::cout << "File used: " << inputFileName << std::endl << std::endl;
 
 		//parallel correctness test
 		std::cout << startMessageParCorr;
 		ParTestList(list, inputList);
-		std::cout << endMessageParCorr;
-		std::cout << "File used: " << inputFileName << std::endl << std::endl;
+		std::cout << endMessageParCorr << std::endl;;
+		//std::cout << "File used: " << inputFileName << std::endl << std::endl;
 	}
 
-	if(testMode == FULL || testMode == PERFORMANCE)
+	if(testMode == PERFORMANCE)
 	{
 		std::cout << startMessageParPerf;
 		std::chrono::duration<double, std::milli> duration = ParTestList(list, inputList);
@@ -354,63 +353,141 @@ int SeqCorrTestList(List *list)
  * @brief A parallel test of the list implementations
  * @detail Generates threads, which perform certain tests
  */
-std::chrono::duration<double, std::milli> ParTestList(List *list, std::list<ListOperation> inputList)
+std::chrono::duration<double, std::milli> ParTestList(List *list, std::vector<ListOperation> inputList)
 {
 	std::thread *threads[numberOfThreads];
 	std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
 
 	//this lock prevents the called threads from starting
 	canStart.lock();
-	if(testMode == PERFORMANCE || testMode == FULL)
+	if(testMode == PERFORMANCE)
 	{
 		for(int z = 0; static_cast<unsigned int>(z) < numberOfThreads; z++)
 		{
-			threads[z] = new std::thread(ParPerfTestListIndividual, list, std::list<ListOperation>(inputList));
+			threads[z] = new std::thread(ParPerfTestListIndividual, list, std::vector<ListOperation>(inputList));
 		}
-	}
-	if(testMode == CORRECTNESS || testMode == FULL)
-	{
+		//order of starting the time measurement and the unlocking operation may affect the result
+		start = std::chrono::high_resolution_clock::now();
+		//unlocking unleashes the individual threads
+		canStart.unlock();
+		
+		//wait for all the threads until they have finished
 		for(int z = 0; static_cast<unsigned int>(z) < numberOfThreads; z++)
 		{
-			threads[z] = new std::thread(ParCorrTestListIndividual, list);
+			threads[z]->join();
 		}
+		end = std::chrono::high_resolution_clock::now();
 	}
-	//order of starting the time measurement and the unlocking operation may affect the result
-	start = std::chrono::high_resolution_clock::now();
-	//unlocking unleashes the individual threads
-	canStart.unlock();
-	
-	//wait for all the threads until they have finished
-	for(int z = 0; static_cast<unsigned int>(z) < numberOfThreads; z++)
+	else if(testMode == CORRECTNESS)
 	{
-		threads[z]->join();
-	}
-	end = std::chrono::high_resolution_clock::now();
+		/**************************************************corr test 1**************************************************/
+		std::cout << "Start of Correctness Test 1" << std::endl;
+		unsigned int addCounter[numberOfThreads];
+		unsigned int removeCounter[numberOfThreads];
+		unsigned int addSum = 0, removeSum = 0;
+		memset(addCounter, 0, sizeof(addCounter));
+		memset(removeCounter, 0, sizeof(addCounter));
+		for(int z = 0; static_cast<unsigned int>(z) < numberOfThreads; z++)
+		{
+			threads[z] = new std::thread(ParCorrTestListIndividual1, list, &addCounter[z], &removeCounter[z]);
+		}
 
-	if(testMode == CORRECTNESS)
-	{
+		//unlocking unleashes the individual threads
+		canStart.unlock();
+		
+		//wait for all the threads until they have finished
+		for(int z = 0; static_cast<unsigned int>(z) < numberOfThreads; z++)
+		{
+			threads[z]->join();
+			delete threads[z];
+		}
+		//check whether addCounter and removeCounter add up to the same values
+		for(int z = 0; static_cast<unsigned int>(z) < numberOfThreads; z++)
+		{
+			addSum += addCounter[z];
+			removeSum += removeCounter[z];
+		}
+		if(addSum != removeSum)
+		{
+			std::cout << "Error in correctness test 1: addSum != removeSum" << std::endl;
+			std::cout << "addSum: " << addSum << std::endl;
+			std::cout << "removeSum: " << removeSum << std::endl;
+		}
 		//check whether the list is empty
-		if(list->isEmpty())
+		if(!list->isEmpty())
+		{
+			std::cout << "Error, the list should be empty after Correcntess Test 1" << std::endl;
 			//for a correctness test always return a duration of 0
 			return std::chrono::duration<double, std::milli>(0);
-		else
-		{
-			std::cout << "Error, the list should be empty" << std::endl;
-			exit(EXIT_FAILURE);
 		}
+		std::cout << "End of Correctness Test 1" << std::endl << std::endl;
+
+		/**************************************************corr test 2**************************************************/
+		std::cout << "Start of Correctness Test 2" << std::endl;
+		canStart.lock();
+		for(int z = 0; static_cast<unsigned int>(z) < numberOfThreads; z++)
+		{
+			threads[z] = new std::thread(ParCorrTestListIndividual2, list, static_cast<unsigned int>(z));
+		}
+
+		//unlocking unleashes the individual threads
+		canStart.unlock();
+		
+		//wait for all the threads until they have finished
+		for(int z = 0; static_cast<unsigned int>(z) < numberOfThreads; z++)
+		{
+			threads[z]->join();
+			delete threads[z];
+		}
+		//check whether the list is empty
+		if(!list->isEmpty())
+		{
+			std::cout << "Error, the list should be empty after Correctness Test 2" << std::endl;
+			//for a correctness test always return a duration of 0
+			return std::chrono::duration<double, std::milli>(0);
+		}
+		std::cout << "End of Correctness Test 2" << std::endl << std::endl;
+
+		/**************************************************corr test 3**************************************************/
+		std::cout << "Start of Correctness Test 3" << std::endl;
+		canStart.lock();
+		for(int z = 0; static_cast<unsigned int>(z) < numberOfThreads; z++)
+		{
+			threads[z] = new std::thread(ParCorrTestListIndividual3, list, static_cast<unsigned int>(z));
+		}
+
+		//unlocking unleashes the individual threads
+		canStart.unlock();
+		
+		//wait for all the threads until they have finished
+		for(int z = 0; static_cast<unsigned int>(z) < numberOfThreads; z++)
+		{
+			threads[z]->join();
+			delete threads[z];
+		}
+
+		//check whether the list is empty
+		if(!list->isEmpty())
+		{
+			std::cout << "Error, the list should be empty after Correctness Test 3" << std::endl;
+			//for a correctness test always return a duration of 0
+			return std::chrono::duration<double, std::milli>(0);
+		}
+		std::cout << "End of Correctness Test 3" << std::endl << std::endl;
+		return std::chrono::duration<double, std::milli>(0);
 	}
 
 	return std::chrono::duration<double, std::milli>(end-start);
 }
 
-void ParPerfTestListIndividual(List *list, std::list<ListOperation> inputList)
+void ParPerfTestListIndividual(List *list, std::vector<ListOperation> inputList)
 {
 	//std::this_thread::sleep_until(start);
 	//thread can only start after the main thread has unlocked this lock
 	canStart.lock();
 	canStart.unlock();
 
-	for(std::list<ListOperation>::iterator it = inputList.begin(); !inputList.empty() && it != inputList.end(); it++)
+	for(std::vector<ListOperation>::iterator it = inputList.begin(); !inputList.empty() && it != inputList.end(); it++)
 	{
 		switch(it->operation)
 		{
@@ -434,17 +511,69 @@ void ParPerfTestListIndividual(List *list, std::list<ListOperation> inputList)
 }
 
 /**
- * @brief A parallel correctness test
+ * @brief A parallel correctness test, where every thread adds and removes the same elements and stores the number
+ *		  of successfully add and remove operations in the respective counter
  */
-void ParCorrTestListIndividual(List *list)
+void ParCorrTestListIndividual1(List *list, unsigned int *addCounter, unsigned int *removeCounter)
 {
+	canStart.lock();
+	canStart.unlock();
 	//add elements to the list
 	for(int z = 0; static_cast<unsigned int>(z) < numberOfListElementsCorr; z++)
 	{
-		list->add(z);
+		if(list->add(z))
+			(*addCounter)++;
 	}
 	//remove them again from the list
 	for(int z = static_cast<int>(numberOfListElementsCorr - 1); z >= 0; z--)
+	{
+		if(list->remove(z))
+			(*removeCounter)++;
+	}
+
+	//writing to cout with one string (in one go) prohibites scrambling of messages
+	//the output should not happen during performance testing, as it would only waste time
+	std::cout << std::dec;
+	std::string message;
+	std::stringstream ss;
+	ss << std::this_thread::get_id();
+	message.append("Thread #");
+	message.append(ss.str());
+	message.append(" successfully finishes\n");
+	std::cout << message;
+}
+
+/**
+ * @brief Every thread adds its own unique elements and removes these exact elements
+ *		  (shows that other threads' operations on other parts of the list do not invalid the list state)
+ */
+void ParCorrTestListIndividual2(List *list, unsigned int offset)
+{
+	canStart.lock();
+	canStart.unlock();
+	//add elements to the list
+	for(int z = static_cast<int>(offset); static_cast<unsigned int>(z) < numberOfListElementsCorr; z = z + numberOfThreads)
+	{
+		list->add(z);
+	}
+	//check whether the just added element are really in the list
+	for(int z = static_cast<int>(offset); static_cast<unsigned int>(z) < numberOfListElementsCorr; z = z + numberOfThreads)
+	{
+		if(!list->contains(z))
+		{
+			std::string message;
+			message.append("Error in correctness test 2, element is not contained in list, although it should be \nz: ");
+			message.append(std::to_string(z));
+			message.append("\noffset: ");
+			message.append(std::to_string(offset));
+			message.append("\nnumberOfThreads: ");
+			message.append(std::to_string(numberOfThreads));
+			message.append("\n");
+			std::cout << message;
+		}
+	}
+	//remove them again from the list
+	for(int z = static_cast<int>(offset); static_cast<unsigned int>(z) < numberOfListElementsCorr; z = z + numberOfThreads)
 	{
 		list->remove(z);
 	}
@@ -457,8 +586,63 @@ void ParCorrTestListIndividual(List *list)
 	ss << std::this_thread::get_id();
 	message.append("Thread #");
 	message.append(ss.str());
-	message.append(" finishes\n");
+	message.append(" successfully finishes\n");
 	std::cout << message;
+}
+
+/**
+ * @brief Performs a correctness test with only a few threads,
+ *	 	  where one waits for certain elements to be added and then starts removing them.
+ */
+void ParCorrTestListIndividual3(List *list, unsigned int ID)
+{
+	const int FIRST_ELEM = 0;
+	const int LAST_ELEM = 9999;
+	const int TEST_ITERATIONS = 20;
+
+	canStart.lock();
+	canStart.unlock();
+
+	//thread 0 (busy) waits until the element LAST_ELEM has been added to the list and then removes only the odd ones
+	if(ID == 0)
+	{
+		//wait until LAST_ELEM has been added to the list
+		while(!list->contains(LAST_ELEM));
+		
+		//start removing the odd elements from back to front
+		for(int z = ((LAST_ELEM % 2) == 0) ? LAST_ELEM-1 : LAST_ELEM ; z >= FIRST_ELEM; z = z - 2)
+		{
+			if(!list->remove(z))
+				std::cout << "Error, the remove operation should never fail" << std::endl;
+		}
+	}
+	//thread 1 adds elements from FIRST_ELEM up to LAST_ELEM and then removes only the even ones
+	else if(ID == 1)
+	{
+		//add elements from FIRST_ELEM to LAST_ELEM
+		for(int z = FIRST_ELEM; z <= LAST_ELEM; z++)
+		{
+			if(!list->add(z))
+				std::cout << "Error, the add operation should never fail" << std::endl;
+		}
+		//remove only the even elements
+		for(int z = ((LAST_ELEM % 2) == 0) ? LAST_ELEM : LAST_ELEM-1 ; z >= FIRST_ELEM; z = z - 2)
+		{
+			if(!list->remove(z))
+				std::cout << "Error, the remove operation should never fail" << std::endl;
+		}
+	}
+	//all other threads return immediately
+
+	//writing to cout with one string (in one go) prohibites scrambling of messages
+	//the output should not happen during performance testing, as it would only waste time
+	std::cout << std::dec;
+	std::string message;
+	std::stringstream ss;
+	ss << std::this_thread::get_id();
+	message.append("Thread #");
+	message.append(ss.str());
+	message.append(" successfully finishes\n"); std::cout << message;
 }
 
 void PrintUsage(void)

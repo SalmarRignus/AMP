@@ -195,3 +195,21 @@ std::atomic<LockFreeList::AtomicElements> *LockFreeList::Node::getAtomics(void)
 {
 	return &(this->atomicElements);
 }
+
+/**********marked lock-free list**********/
+//int LockFreeMarkedList::Node::getItem(void)
+//{
+//	return this->item;
+//}
+//void LockFreeMarkedList::Node::setItem(int item)
+//{
+//	this->item = item;
+//}
+//LockFreeMarkedList::Node *LockFreeMarkedList::Node::getNext(void)
+//{
+//	return this->atomicElements.load();
+//}
+//void LockFreeMarkedList::Node::setNext(LockFreeMarkedList::Node *next)
+//{
+//	this->next.store(next);
+//}
