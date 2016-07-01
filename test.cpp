@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
 	char buffer[BUFFER_SIZE];
 	unsigned int array[MAX_INDEX] = {1,2,3,4,5,6,7,8,10,12,14,16,20,24,28,32,36,40};
 
-	//system(strcat(strcat(strcpy(buffer, "./listTest "), std::to_string(MAX_THREADS).c_str()), " ListContentCorrectness.txt correctness whole split full"));
+	//system(strcat(strcat(strcpy(buffer, "./listTest "), std::to_string(MAX_THREADS).c_str()), " ListContentCorrectness.txt correctness split full"));
 
 	for(int z = 0; z < NUMBER_OF_INDIV_TESTRUNS; z++)
 	{

@@ -9,5 +9,5 @@ For testing either use
 ./test
 or directly call
 ./listTest
-with the appropriate paramters, for example:
-./listTest 4 ListContentRandom_80_10_10.txt performance
+with the appropriate parameters, for example:
+./listTest 4 ListContentRandom_80_10_10.txt performance split full
