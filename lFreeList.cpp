@@ -152,7 +152,7 @@ bool LockFreeList::remove(int item)
 			AtomicElements AECurr(succ, false);
 			AtomicElements AEErasedCurr(succ, true);
 
-			//if curr still points to its "former" next element and this next element is not deleted
+			//if curr still points to its "former" next element and is not deleted
 			//then mark curr as deleted otherwise start over
 #ifndef COMPARE_EXCHANGE_WEAK
 			if(!w.curr->getAtomics()->compare_exchange_strong(AECurr, AEErasedCurr))
@@ -203,4 +203,26 @@ LockFreeList::AtomicElements::AtomicElements(Node *next, bool erased)
 {
 	this->next = next;
 	this->erased = erased;
+}
+
+bool LockFreeList::addUnsafe(int item)
+{
+	Node *pred, *curr;
+
+	pred = head;
+	curr = head->getNext();
+
+	while(curr->getItem() < item)
+	{
+		pred = curr;
+		curr = curr->getNext();
+	}
+	if(curr->getItem() == item)
+		return false;
+	else
+	{
+		Node *node = new Node(item, curr);
+		pred->setNext(node);
+		return true;
+	}
 }

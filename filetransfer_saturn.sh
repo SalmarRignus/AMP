@@ -1,1 +1,1 @@
-scp coarseList.cpp coarseList.h createListData.cpp fineList.cpp fineList.h lazyList.cpp lazyList.h lFreeList.cpp lFreeList.h list.h listOperation.h listTest.cpp Makefile node.cpp optList.cpp optList.h test.cpp window.cpp saturn:~
+scp coarseList.cpp coarseList.h createListData.cpp fineList.cpp fineList.h lazyList.cpp lazyList.h lFreeList.cpp lFreeList.h list.h list.cpp listOperation.h listTest.cpp Makefile node.cpp optList.cpp optList.h test.cpp window.cpp saturn:~

@@ -51,6 +51,7 @@ public:
 	Window find(int item);
 	bool contains(int item);
 	bool add(int item);
+	bool addUnsafe(int item);
 	bool remove(int item);
 	bool isEmpty(void);
 

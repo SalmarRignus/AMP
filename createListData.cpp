@@ -7,8 +7,7 @@
 
 
 #define BUFFER_SIZE 				1024
-#define DEFAULT_numberOfElements	5000
-#define MAX_WRITE					10
+#define DEFAULT_numberOfElements	40000
 
 
 const char *SEQ_ORDERED_DATA_FILENAME = "ListContentCorrSort.txt";

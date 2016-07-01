@@ -31,11 +31,11 @@ struct TestResult
 
 /****************************************Prototypes****************************************/
 void PrintUsage(void);
-TestResult *TestLists(std::vector<ListOperation> inputList);
-TestResult TestList(List *list, std::vector<ListOperation> inputList);
+TestResult *TestLists(std::vector<ListOperation> inputVector);
+TestResult TestList(List *list, std::vector<ListOperation> inputVector);
 int SeqCorrTestList(List *list); 																			//predefined correctness test
-std::chrono::duration<double, std::milli> ParTestList(List *list, std::vector<ListOperation> inputList);
-void ParPerfTestListIndividual(List *list, std::vector<ListOperation> inputList);							
+std::chrono::duration<double, std::milli> ParTestList(List *list, std::vector<ListOperation> inputVector);
+void ParPerfTestListIndividual(List *list, std::vector<ListOperation> inputVector);							
 void ParCorrTestListIndividual1(List *list, unsigned int *addCounter, unsigned int *removeCounter);			//predefined correctness test
 void ParCorrTestListIndividual2(List *list, unsigned int offset);											//predefined correctness test
 void ParCorrTestListIndividual3(List *list, unsigned int ID);												//predefined correctness test
@@ -47,7 +47,7 @@ void WriteTestResult(TestResult result);
 #define WAIT_DURATION							1000		//in milliseconds
 #define NUMBER_OF_LIST_IMPLEMENTATIONS			5
 
-const char *OUTPUT_FILE_NAME = 					"TestResults.txt";
+const char *OUTPUT_FILE_NAME = 					"TestResultsStrongScalingStartFullLargeSize.txt";
 const char *DEFAULT_FILE_NAME = 				"ListContent.txt";
 const unsigned int DEFAULT_NUMBER_OF_THREADS = 	50;
 const enum	TestMode DEFAULT_TEST_MODE =		PERFORMANCE;
@@ -65,21 +65,30 @@ unsigned int numberOfListElementsCorr = 10000;	//for the predefined correctness 
 
 std::mutex canStart;
 
+bool fillList = false;
+
+bool splitWorkLoad = false;
+
 /**
  * @brief	Performs a couple of tests considering the correctness and performance of different
  *			concurrent list implementations
- * @details Call: listTest <numberOfThreads> <listFileName> <testMode>
+ * @details Call: listTest <numberOfThreads> <listFileName> <testMode> <splitWorkLoad> <fillList>
  *		numberOfThreads:	the number of threads that are spawned
- *		listFileName:		the name of the file, which contains the list data to use for the tests
+ *		listFileName:		the name of the file, which contains the list data to use for the tests (is ignored for test mode "correctness")
  *		testMode:			can be either string "correctness", "performance"
  *							(may lead to erroneuos error message for the performance test)
  *							-) "correctness" indicates that only the correctness tests should be performed
  *							-) "performance" indicates that only the performance tests should be performed
+ *		splitWorkLoad:		Use either "whole" to pass the whole file content of operations to every thread
+ *							or "split" to evenly divide the operations among all threads
+ *							(is ignored for test mode "correctness")
+ *		fillList:			"full" or "empty" (whether the list implementations should be tested on an empty list
+ * 							or a full on
  */
 int main(int argc, char *argv[])
 {
 	char buffer[BUFFER_SIZE];
-	std::vector<ListOperation> inputList;
+	std::vector<ListOperation> inputVector;
 
 
 	//parse the command line
@@ -90,7 +99,7 @@ int main(int argc, char *argv[])
 		strcpy(inputFileName, DEFAULT_FILE_NAME);
 		testMode = 			DEFAULT_TEST_MODE;
 		break;
-	case 4:
+	case 6:
 		try
 		{
 			numberOfThreads = 	std::stoul(std::string(argv[1]), NULL, 10);
@@ -113,6 +122,27 @@ int main(int argc, char *argv[])
 			std::cout << "Invalid argument for <testMode>" << std::endl;
 			return EXIT_FAILURE;
 		}
+		if(strcmp(argv[4], "whole") == 0)
+			splitWorkLoad = false;
+		else if(strcmp(argv[4], "split") == 0)
+			splitWorkLoad = true;
+		else 
+		{
+			PrintUsage();
+			std::cout << "Invalid argument for <splitWorkLoad>" << std::endl;
+			return EXIT_FAILURE;
+		}
+		if(strcmp(argv[5], "full") == 0)
+			fillList = true;
+		else if(strcmp(argv[5], "empty") == 0)
+			fillList = false;
+		else
+		{
+			PrintUsage();
+			std::cout << "Invalid argument for <fillList>" << std::endl;
+			return EXIT_FAILURE;
+		}
+
 		break;
 	default:
 		PrintUsage();
@@ -159,7 +189,7 @@ int main(int argc, char *argv[])
 		{
 			//read a possible value to perform the operation on
 			inputFile.getline(buffer, BUFFER_SIZE-1, '\n');
-			inputList.push_back(ListOperation(op, std::stoul(std::string(buffer), NULL, 10)));
+			inputVector.push_back(ListOperation(op, std::stoul(std::string(buffer), NULL, 10)));
 		}
 		catch(std::invalid_argument ex)
 		{
@@ -171,10 +201,10 @@ int main(int argc, char *argv[])
 
 	inputFile.close();
 
-	numberOfListElements = inputList.size();
+	numberOfListElements = inputVector.size();
 
 	TestResult *result;
-	result = TestLists(inputList);
+	result = TestLists(inputVector);
 
 	if(testMode == PERFORMANCE)
 	{
@@ -191,7 +221,7 @@ int main(int argc, char *argv[])
  * @brief Creates list objects of different implementations and calls the TestList method for every one of them
  * @returns A dynamically allocated array of objects of type TestResult
  */
-TestResult *TestLists(std::vector<ListOperation> inputList)
+TestResult *TestLists(std::vector<ListOperation> inputVector)
 {
 	CoarseGrainedList	*cList =	new CoarseGrainedList();
 	FineGrainedList		*fList =	new FineGrainedList();
@@ -201,11 +231,11 @@ TestResult *TestLists(std::vector<ListOperation> inputList)
 
 	TestResult *result = new TestResult[5];
 
-	result[0] = TestList(cList, inputList);
-	result[1] = TestList(fList, inputList);
-	result[2] = TestList(oList, inputList);
-	result[3] = TestList(lList, inputList);
-	result[4] = TestList(lfList, inputList);
+	result[0] = TestList(cList, inputVector);
+	result[1] = TestList(fList, inputVector);
+	result[2] = TestList(oList, inputVector);
+	result[3] = TestList(lList, inputVector);
+	result[4] = TestList(lfList, inputVector);
 
 	//delete cList;
 	//delete fList;
@@ -220,10 +250,10 @@ TestResult *TestLists(std::vector<ListOperation> inputList)
  * @brief Calls the actual test procedures for the list
  * @returns An object of type TestResult
  * @param list Pointer to a list object that will be tested
- * @param inputList A list (conventional C++ list) filled with the list operations to be used
+ * @param inputVector A list (conventional C++ list) filled with the list operations to be used
  *		  in the performance test
  */
-TestResult TestList(List *list, std::vector<ListOperation> inputList)
+TestResult TestList(List *list, std::vector<ListOperation> inputVector)
 {
 	const char *startMessageSeqCorr = NULL, *endMessageSeqCorr = NULL;
 	const char *startMessageParCorr = NULL, *endMessageParCorr = NULL;
@@ -293,7 +323,7 @@ TestResult TestList(List *list, std::vector<ListOperation> inputList)
 
 		//parallel correctness test
 		std::cout << startMessageParCorr;
-		ParTestList(list, inputList);
+		ParTestList(list, inputVector);
 		std::cout << endMessageParCorr << std::endl;;
 		//std::cout << "File used: " << inputFileName << std::endl << std::endl;
 	}
@@ -301,7 +331,7 @@ TestResult TestList(List *list, std::vector<ListOperation> inputList)
 	if(testMode == PERFORMANCE)
 	{
 		std::cout << startMessageParPerf;
-		std::chrono::duration<double, std::milli> duration = ParTestList(list, inputList);
+		std::chrono::duration<double, std::milli> duration = ParTestList(list, inputVector);
 		std::cout << endMessageParPerf;
 		std::cout << "File used: " << inputFileName << std::endl;
 		std::cout << "Required time: " << duration.count() << "ms" << std::endl << std::endl;
@@ -353,7 +383,7 @@ int SeqCorrTestList(List *list)
  * @brief A parallel test of the list implementations
  * @detail Generates threads, which perform certain tests
  */
-std::chrono::duration<double, std::milli> ParTestList(List *list, std::vector<ListOperation> inputList)
+std::chrono::duration<double, std::milli> ParTestList(List *list, std::vector<ListOperation> inputVector)
 {
 	std::thread *threads[numberOfThreads];
 	std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
@@ -362,9 +392,46 @@ std::chrono::duration<double, std::milli> ParTestList(List *list, std::vector<Li
 	canStart.lock();
 	if(testMode == PERFORMANCE)
 	{
-		for(int z = 0; static_cast<unsigned int>(z) < numberOfThreads; z++)
+		if(fillList)
 		{
-			threads[z] = new std::thread(ParPerfTestListIndividual, list, std::vector<ListOperation>(inputList));
+			for(int z = static_cast<int>(numberOfListElements-1); z >= 0; z--)
+			{
+				if(!list->addUnsafe(z))
+				{
+					std::cout << "Error with addUnsafe()" << std::endl;
+					exit(EXIT_FAILURE);
+				}
+			}
+		}
+		//alternative performance test, where the workload stays the same and only the number of threads is varied
+		//in this case the vectors, which are passed as parameters to the individual threads cannot be simply copied as a whole,
+		//but only a fraction of the original vector is copied
+		if(splitWorkLoad)
+		{
+			std::vector<ListOperation> *inputVectors[numberOfThreads];
+
+			//fill the vectors with the appropriate fractions of the original vector
+			for(int vecN = 0; static_cast<unsigned int>(vecN) < numberOfThreads; vecN++)
+			{
+				inputVectors[vecN] = new std::vector<ListOperation>;
+				for(int nElem = 0; static_cast<unsigned int>(nElem) < inputVector.size()/(numberOfThreads-vecN); nElem++)
+				{
+					//put the first element of the inputVector in the new vector and then remove it
+					inputVectors[vecN]->push_back(inputVector.front());
+					inputVector.erase(inputVector.begin());
+				}
+			}
+			for(int z = 0; static_cast<unsigned int>(z) < numberOfThreads; z++)
+			{
+				threads[z] = new std::thread(ParPerfTestListIndividual, list, *(inputVectors[z]));
+			}
+		}
+		else
+		{
+			for(int z = 0; static_cast<unsigned int>(z) < numberOfThreads; z++)
+			{
+				threads[z] = new std::thread(ParPerfTestListIndividual, list, std::vector<ListOperation>(inputVector));
+			}
 		}
 		//order of starting the time measurement and the unlocking operation may affect the result
 		start = std::chrono::high_resolution_clock::now();
@@ -480,14 +547,14 @@ std::chrono::duration<double, std::milli> ParTestList(List *list, std::vector<Li
 	return std::chrono::duration<double, std::milli>(end-start);
 }
 
-void ParPerfTestListIndividual(List *list, std::vector<ListOperation> inputList)
+void ParPerfTestListIndividual(List *list, std::vector<ListOperation> inputVector)
 {
 	//std::this_thread::sleep_until(start);
 	//thread can only start after the main thread has unlocked this lock
 	canStart.lock();
 	canStart.unlock();
 
-	for(std::vector<ListOperation>::iterator it = inputList.begin(); !inputList.empty() && it != inputList.end(); it++)
+	for(std::vector<ListOperation>::iterator it = inputVector.begin(); !inputVector.empty() && it != inputVector.end(); it++)
 	{
 		switch(it->operation)
 		{
@@ -598,7 +665,7 @@ void ParCorrTestListIndividual3(List *list, unsigned int ID)
 {
 	const int FIRST_ELEM = 0;
 	const int LAST_ELEM = 9999;
-	const int TEST_ITERATIONS = 20;
+	//const int TEST_ITERATIONS = 20;
 
 	canStart.lock();
 	canStart.unlock();
@@ -701,11 +768,21 @@ void WriteTestResult(TestResult result)
 		std::cout << "Error, program flow should never enter this section" << std::endl;
 		exit(EXIT_FAILURE);
 	}
-
 	strcat(strcat(strcat(buffer, result.fileName), " "), std::to_string(result.duration).c_str());
 	strcat(strcat(buffer, " "), std::to_string(result.numberOfListElements).c_str());
 	strcat(strcat(buffer, " "), std::to_string(result.numberOfThreads).c_str());
+	strcat(buffer, " ");
+	if(splitWorkLoad)
+		strcat(buffer, "split ");
+	else
+		strcat(buffer, "whole ");
+	if(fillList)
+		strcat(buffer, "full");
+	else
+		strcat(buffer, "empty");
+
 	strcat(buffer, "\n");
+
 	outputFile.write(buffer, strlen(buffer));
 	outputFile.close();
 }
